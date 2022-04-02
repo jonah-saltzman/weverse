@@ -24,11 +24,16 @@
   },
   "homepage": "https://github.com/jonah-saltzman/weverse#readme",
   "devDependencies": {
+    "@types/node": "^17.0.23",
     "typescript": "^4.6.3"
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
   "files": [
     "lib/"
-  ]
+  ],
+  "dependencies": {
+    "axios": "^0.26.1",
+    "node-fetch": "^3.2.3"
+  }
 }
