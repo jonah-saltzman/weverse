@@ -1,4 +1,4 @@
-import { Community } from "./community"
+import { WeverseCommunity } from "."
 
 export interface WeverseArtistProps {
     id: number
@@ -19,11 +19,11 @@ export interface WeverseArtistProps {
     lastPostCreatedAt: Date
     lastPostExpiresAt: Date
     birthdayImgUrl: URL
-    community: Community
+    community: WeverseCommunity
     //posts: Post[]
 }
 
-export class Artist {
+export class WeverseArtist {
     info: WeverseArtistProps
     constructor(props: WeverseArtistProps) {
         this.info = props

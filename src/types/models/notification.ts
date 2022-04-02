@@ -14,3 +14,13 @@ export interface WeverseNotificationProps {
     webOnly: boolean
     platform: string
 }
+
+export class WeverseNotification {
+    info: WeverseNotificationProps
+    constructor(props: WeverseNotificationProps) {
+        this.info = props
+    }
+    public get id(): number {
+        return this.info.id
+    }
+}

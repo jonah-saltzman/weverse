@@ -1,4 +1,4 @@
-import { Artist } from "./artist"
+import { WeverseArtist, WeverseTab } from "."
 
 export interface WeverseCommunityProps {
     id: number
@@ -10,13 +10,16 @@ export interface WeverseCommunityProps {
     banner: URL
     fullName: string
     membersOnly: boolean
-    artists: Artist[]
-    //todo: tabs: Tab[]
+    artists: WeverseArtist[]
+    tabs: WeverseTab[]
 }
 
-export class Community {
+export class WeverseCommunity {
     info: WeverseCommunityProps
     constructor(props: WeverseCommunityProps) {
         this.info = props
+    }
+    public toString() {
+        return this.info.name
     }
 }
