@@ -1,4 +1,4 @@
-export interface WeverseNotification {
+export interface WeverseNotificationProps {
     id: number
     message: string
     boldElement: string
