@@ -1,0 +1,34 @@
+{
+  "name": "weverse",
+  "version": "1.0.0",
+  "description": "Wrapper for weverse private API",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tsc": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json",
+    "prepublish": "npm run tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonah-saltzman/weverse.git"
+  },
+  "keywords": [
+    "weverse",
+    "kpop",
+    "api",
+    "node"
+  ],
+  "author": "Jonah Saltzman",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jonah-saltzman/weverse/issues"
+  },
+  "homepage": "https://github.com/jonah-saltzman/weverse#readme",
+  "devDependencies": {
+    "typescript": "^4.6.3"
+  },
+  "main": "./lib/cjs/index.js",
+  "module": "./lib/esm/index.js",
+  "files": [
+    "lib/"
+  ]
+}
