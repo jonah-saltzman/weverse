@@ -64,7 +64,7 @@ export class WeverseClient implements WeverseClientSettings {
             )
             if (this.handleResponse(response, urls.login)) {
                 const credentials = response.data
-                //console.log(credentials)
+                console.log(credentials)
                 if (isWeverseLogin(credentials)) {
                     this._credentials = credentials
                     this._authorized = true
@@ -81,14 +81,18 @@ export class WeverseClient implements WeverseClientSettings {
     }
 
     protected createLoginPayload(): void {
-        let payload: WeverseLoginPayload | null = null
-        if (isWeversePasswordAuthorization(this.authorization)) {
-            payload = new WeverseLoginPayload(this.authorization)
-        } else {
+        try {
+            let payload: WeverseLoginPayload | null = null
+            if (isWeversePasswordAuthorization(this.authorization)) {
+                payload = new WeverseLoginPayload(this.authorization)
+            } else {
+                return
+            }
+            if (!payload) return
+            this._loginPayload = payload
+        } catch (e) {
             return
         }
-        if (!payload) return
-        this._loginPayload = payload
     }
 
     public async checkToken(): Promise<boolean> {

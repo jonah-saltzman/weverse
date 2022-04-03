@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Wrapper for weverse private API",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "tsc": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json",
     "copy": "copyfiles -f src/client/publicCert.txt lib/cjs/client && copyfiles -f src/client/publicCert.txt lib/esm/client",
     "prepublish": "npm run tsc && npm run copy"
@@ -31,6 +31,7 @@
     "copyfiles": "^2.4.1",
     "jest": "^27.5.1",
     "ts-jest": "^27.1.4",
+    "ts-node": "^10.7.0",
     "typescript": "^4.6.3"
   },
   "main": "./lib/cjs/index.js",
