@@ -1,9 +1,5 @@
 import { AssignType } from "."
-
-export interface WeverseTabProps {
-    id?: number
-    name?: string
-}
+import { WeverseTabProps } from "../types"
 
 export class WeverseTab extends AssignType<WeverseTabProps>() {
     constructor(props: WeverseTabProps) {

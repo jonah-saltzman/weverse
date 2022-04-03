@@ -1,6 +1,6 @@
-import { WeverseOauthCredentials } from "../types"
+import { WeverseOauthCredentials } from "."
 
-export const validateWeverseLogin = (res: any): res is WeverseOauthCredentials => {
+export const isWeverseLogin = (res: any): res is WeverseOauthCredentials => {
     //console.log(res)
     return res.access_token && typeof res.access_token === 'string' &&
     res.token_type && res.token_type === 'bearer' &&

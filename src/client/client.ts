@@ -1,16 +1,31 @@
-import { WeverseAuthorization, WeverseClientSettings, WeverseNotification, WeverseOauthCredentials, WeversePasswordAuthorization, WeverseTokenAuthorization } from "../types"
-import { WeverseUrl as urls, encryptPassword, validateStatus } from "."
+import { 
+    WeverseAuthorization,
+    WeverseClientSettings,
+    WeverseOauthCredentials,
+    WeversePasswordAuthorization,
+    WeverseTokenAuthorization,
+    isWeverseLogin } from "../types"
+
+import { 
+    WeverseUrl as urls,
+    validateStatus } from "."
+
 import axios, { AxiosResponse } from 'axios'
-import { isWeversePasswordAuthorization, WeverseLoginPayload } from "./helpers"
-import { validateWeverseLogin } from "./typeguards"
+
+import { 
+    isWeversePasswordAuthorization,
+    WeverseLoginPayload } from "./helpers"
 
 export class WeverseClient implements WeverseClientSettings {
+
     verbose: boolean
     authorization: WeversePasswordAuthorization | WeverseTokenAuthorization
     authType: 'token' | 'password'
     protected _loginPayload: WeverseLoginPayload | null
     protected _authorized: boolean
     protected _credentials: WeverseOauthCredentials | null
+    protected headers: {[key: string]: string} | undefined
+
     constructor(verbose: boolean, authorization: WeverseAuthorization) {
         this._authorized = false
         this.verbose = verbose
@@ -49,8 +64,8 @@ export class WeverseClient implements WeverseClientSettings {
             )
             if (this.handleResponse(response, urls.login)) {
                 const credentials = response.data
-                console.log(credentials)
-                if (validateWeverseLogin(credentials)) {
+                //console.log(credentials)
+                if (isWeverseLogin(credentials)) {
                     this._credentials = credentials
                     this._authorized = true
                     this.authorization = { token: credentials.access_token }
@@ -64,6 +79,7 @@ export class WeverseClient implements WeverseClientSettings {
             this.log(e)
         }
     }
+
     protected createLoginPayload(): void {
         let payload: WeverseLoginPayload | null = null
         if (isWeversePasswordAuthorization(this.authorization)) {
@@ -74,6 +90,7 @@ export class WeverseClient implements WeverseClientSettings {
         if (!payload) return
         this._loginPayload = payload
     }
+
     public async checkToken(): Promise<boolean> {
         if (this.authType !== 'token') {
             this.log('Weverse: provide a token or call .login() with valid username + password')
@@ -92,6 +109,7 @@ export class WeverseClient implements WeverseClientSettings {
             return false
         }
     }
+
     async getAllCommunities(): Promise<void> {
         try {
             if (!this.authorized && !await this.checkToken()) return
@@ -101,16 +119,18 @@ export class WeverseClient implements WeverseClientSettings {
             console.log(e)
         }
     }
+
     handleResponse(response: AxiosResponse, url: string): boolean {
         if (response.status === 200) return true
         this.log(`Weverse: API error @ ${url}. Status code ${response.status}`)
         return false
     }
+
     protected log(...vals: any): void {
         if (this.verbose) console.log(...vals)
     }
+
     public get authorized(): boolean {
         return this._authorized
     }
-    protected headers: {[key: string]: string} | undefined
 }
