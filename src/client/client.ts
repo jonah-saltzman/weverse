@@ -1,68 +1,101 @@
-import { WeverseAuthorization, WeverseClientSettings, WeverseNotification, WeversePasswordAuthorization, WeverseTokenAuthorization } from "../types"
-import { WeverseUrl as urls } from "."
+import { WeverseAuthorization, WeverseClientSettings, WeverseNotification, WeverseOauthCredentials, WeversePasswordAuthorization, WeverseTokenAuthorization } from "../types"
+import { WeverseUrl as urls, encryptPassword, validateStatus } from "."
 import axios, { AxiosResponse } from 'axios'
-import { encryptPassword } from "./key"
+import { isWeversePasswordAuthorization, WeverseLoginPayload } from "./helpers"
+import { validateWeverseLogin } from "./typeguards"
 
 export class WeverseClient implements WeverseClientSettings {
     verbose: boolean
     authorization: WeversePasswordAuthorization | WeverseTokenAuthorization
     authType: 'token' | 'password'
+    protected _loginPayload: WeverseLoginPayload | null
     protected _authorized: boolean
-    constructor(verbose: boolean, authorization: WeversePasswordAuthorization)
-    constructor(verbose: boolean, token: WeverseTokenAuthorization)
+    protected _credentials: WeverseOauthCredentials | null
     constructor(verbose: boolean, authorization: WeverseAuthorization) {
         this._authorized = false
         this.verbose = verbose
         this.authorization = authorization
+        this._loginPayload = null
+        this._credentials = null
         if ('token' in authorization) {
             this.authType = 'token'
-            this.headers = {'Authorization': 'Bearer ' + authorization.token}
+            this.headers = { 'Authorization': 'Bearer ' + authorization.token }
         } else {
             this.authType = 'password'
         }
     }
-
-    // self.__login_payload = {
-    //     "grant_type": "password",
-    //     "client_id": "weverse-test",
-    //     "username": kwargs.get("username"),
-    //     "password": self.__get_encrypted_password(kwargs.get("password"))
-    // }
-    async login(): Promise<void> {
+    
+    public async login(credentials?: WeversePasswordAuthorization): Promise<void> {
+        if (credentials) {
+            this.log('Weverse: using provided credentials')
+            this.authorization = credentials
+            this.authType = 'password'
+            this._authorized = false
+        }
         try {
-            if (this.authType !== 'password') return
-            const credentials = this.authorization as WeversePasswordAuthorization
-            const payload = {
-                'grant_type': 'password',
-                'client_id': 'weverse-test',
-                'username': credentials.username,
-                'password': encryptPassword(credentials.password)
+            if (this.authType !== 'password') {
+                this.log('Weverse: provide credentials to call .login')
+                return
             }
-            const response = await axios.post(urls.login, payload)
+            this.createLoginPayload()
+            if (!this._loginPayload) {
+                this.log('Weverse: failed to generate login payload')
+                return
+            }
+            const response = await axios.post(
+                urls.login,
+                this._loginPayload.payload,
+                { validateStatus }
+            )
             if (this.handleResponse(response, urls.login)) {
-                console.log(response.data)
-            } else {
-                console.log('login failed')
+                const credentials = response.data
+                console.log(credentials)
+                if (validateWeverseLogin(credentials)) {
+                    this._credentials = credentials
+                    this._authorized = true
+                    this.authorization = { token: credentials.access_token }
+                    this.authType = 'token'
+                    this.log('Weverse password authorization succeeded')
+                } else {
+                    this.log('Weverse password authorization failed')
+                }
             }
         } catch (e) {
-            if (this.verbose) console.error(e)
+            this.log(e)
         }
     }
-    async checkToken(): Promise<boolean> {
+    protected createLoginPayload(): void {
+        let payload: WeverseLoginPayload | null = null
+        if (isWeversePasswordAuthorization(this.authorization)) {
+            payload = new WeverseLoginPayload(this.authorization)
+        } else {
+            return
+        }
+        if (!payload) return
+        this._loginPayload = payload
+    }
+    public async checkToken(): Promise<boolean> {
+        if (this.authType !== 'token') {
+            this.log('Weverse: provide a token or call .login() with valid username + password')
+            return false
+        }
         try {
-            const response = await axios.get(urls.checkToken, {headers: this.headers})
-            console.log(response.status)
+            const response = await axios.get(
+                urls.checkToken,
+                { headers: this.headers, validateStatus }
+            )
+            this.handleResponse(response, urls.checkToken)
             return this._authorized = response.status === 200
         } catch(e) {
-            if (this.verbose) console.error(e)
+            this.log(e)
             this._authorized = false
             return false
         }
     }
     async getAllCommunities(): Promise<void> {
         try {
-            if (!this.authorized && !await this.checkToken()) throw 'Couldn\'t get Weverse Communities: invalid token'
-            const response = await axios.get(urls.communities, {headers: this.headers})
+            if (!this.authorized && !await this.checkToken()) return
+            const response = await axios.get(urls.communities, { headers: this.headers })
             console.log(response.data)
         } catch(e) {
             console.log(e)
@@ -70,13 +103,11 @@ export class WeverseClient implements WeverseClientSettings {
     }
     handleResponse(response: AxiosResponse, url: string): boolean {
         if (response.status === 200) return true
-        if (response.status === 401) {
-            this._authorized = false
-            if (this.verbose) console.log(`Weverse: 401 unauthorized`)
-        }
-        if (response.status === 404 && this.verbose) console.log(`Weverse: 404 not found`)
-        if (this.verbose) console.log(`Weverse: API error @ ${url}. Status code ${response.status}`)
+        this.log(`Weverse: API error @ ${url}. Status code ${response.status}`)
         return false
+    }
+    protected log(...vals: any): void {
+        if (this.verbose) console.log(...vals)
     }
     public get authorized(): boolean {
         return this._authorized

@@ -1,14 +1,15 @@
+import { AssignType } from "."
+
 export interface WeverseTabProps {
     id?: number
     name?: string
 }
 
-export class WeverseTab {
-    info: WeverseTabProps
+export class WeverseTab extends AssignType<WeverseTabProps>() {
     constructor(props: WeverseTabProps) {
-        this.info = props
+        super(props)
     }
     public toString(): string {
-        return this.info.name ?? 'UNNAMED TAB'
+        return this.name ?? 'UNNAMED TAB'
     }
 }

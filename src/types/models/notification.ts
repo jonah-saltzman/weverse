@@ -1,3 +1,5 @@
+import { AssignType } from "."
+
 export interface WeverseNotificationProps {
     id: number
     message: string
@@ -15,12 +17,11 @@ export interface WeverseNotificationProps {
     platform: string
 }
 
-export class WeverseNotification {
-    info: WeverseNotificationProps
+export class WeverseNotification extends AssignType<WeverseNotificationProps>() {
     constructor(props: WeverseNotificationProps) {
-        this.info = props
+        super(props)
     }
     public get id(): number {
-        return this.info.id
+        return this.id
     }
 }

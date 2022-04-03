@@ -36,7 +36,6 @@ export class WeverseUrl {
     public static get communities(): string {
         return WeverseUrl._communities.toString()
     }
-
     public static get login(): string {
         return WeverseUrl._login.toString()
     }

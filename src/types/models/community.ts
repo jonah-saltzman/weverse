@@ -1,4 +1,4 @@
-import { WeverseArtist, WeverseTab } from "."
+import { WeverseArtist, WeverseTab, AssignType } from "."
 
 export interface WeverseCommunityProps {
     id: number
@@ -14,12 +14,11 @@ export interface WeverseCommunityProps {
     tabs: WeverseTab[]
 }
 
-export class WeverseCommunity {
-    info: WeverseCommunityProps
+export class WeverseCommunity extends AssignType<WeverseCommunityProps>() {
     constructor(props: WeverseCommunityProps) {
-        this.info = props
+        super(props)
     }
     public toString() {
-        return this.info.name
+        return this.name
     }
 }

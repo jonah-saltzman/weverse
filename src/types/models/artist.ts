@@ -1,4 +1,4 @@
-import { WeverseCommunity } from "."
+import { AssignType, WeverseCommunity } from "."
 
 export interface WeverseArtistProps {
     id: number
@@ -23,9 +23,8 @@ export interface WeverseArtistProps {
     //posts: Post[]
 }
 
-export class WeverseArtist {
-    info: WeverseArtistProps
+export class WeverseArtist extends AssignType<WeverseArtistProps>() {
     constructor(props: WeverseArtistProps) {
-        this.info = props
+        super(props)
     }
 }
