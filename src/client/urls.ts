@@ -10,7 +10,7 @@ enum WeverseEndpoints {
     COMMUNITIES = 'communities'
 }
 
-export default class WeverseUrl {
+export class WeverseUrl {
     static base: string
     private static _login: URL
     private static _checkToken: URL
@@ -35,5 +35,9 @@ export default class WeverseUrl {
     }
     public static get communities(): string {
         return WeverseUrl._communities.toString()
+    }
+
+    public static get login(): string {
+        return WeverseUrl._login.toString()
     }
 }

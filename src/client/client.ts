@@ -1,6 +1,7 @@
 import { WeverseAuthorization, WeverseClientSettings, WeverseNotification, WeversePasswordAuthorization, WeverseTokenAuthorization } from "../types"
-import urls from './urls'
-import axios from 'axios'
+import { WeverseUrl as urls } from "."
+import axios, { AxiosResponse } from 'axios'
+import { encryptPassword } from "./key"
 
 export class WeverseClient implements WeverseClientSettings {
     verbose: boolean
@@ -20,13 +21,40 @@ export class WeverseClient implements WeverseClientSettings {
             this.authType = 'password'
         }
     }
+
+    // self.__login_payload = {
+    //     "grant_type": "password",
+    //     "client_id": "weverse-test",
+    //     "username": kwargs.get("username"),
+    //     "password": self.__get_encrypted_password(kwargs.get("password"))
+    // }
+    async login(): Promise<void> {
+        try {
+            if (this.authType !== 'password') return
+            const credentials = this.authorization as WeversePasswordAuthorization
+            const payload = {
+                'grant_type': 'password',
+                'client_id': 'weverse-test',
+                'username': credentials.username,
+                'password': encryptPassword(credentials.password)
+            }
+            const response = await axios.post(urls.login, payload)
+            if (this.handleResponse(response, urls.login)) {
+                console.log(response.data)
+            } else {
+                console.log('login failed')
+            }
+        } catch (e) {
+            if (this.verbose) console.error(e)
+        }
+    }
     async checkToken(): Promise<boolean> {
         try {
             const response = await axios.get(urls.checkToken, {headers: this.headers})
             console.log(response.status)
             return this._authorized = response.status === 200
         } catch(e) {
-            console.log(e)
+            if (this.verbose) console.error(e)
             this._authorized = false
             return false
         }
@@ -40,19 +68,18 @@ export class WeverseClient implements WeverseClientSettings {
             console.log(e)
         }
     }
-    handleResponse(status: number, url: string): boolean {
-        if (status === 200) return true
-        if (status === 401) {
+    handleResponse(response: AxiosResponse, url: string): boolean {
+        if (response.status === 200) return true
+        if (response.status === 401) {
             this._authorized = false
             if (this.verbose) console.log(`Weverse: 401 unauthorized`)
         }
-        if (status === 404 && this.verbose) console.log(`Weverse: 404 not found`)
-        if (this.verbose) console.log(`Weverse: API error @ ${url}. Status code ${status}`)
+        if (response.status === 404 && this.verbose) console.log(`Weverse: 404 not found`)
+        if (this.verbose) console.log(`Weverse: API error @ ${url}. Status code ${response.status}`)
         return false
     }
     public get authorized(): boolean {
         return this._authorized
     }
     protected headers: {[key: string]: string} | undefined
-    protected weversePublicKey = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu/OhimOynajYomJmBsNvQxSDwekunsp986l7s/zMN/8jHXFlTqT79ZOsOwzVdZcKnkWYXwJg4nhIFpaIsPzklQCImp2kfKUJQV3jzw7/Qtq6NrOOh9YBADr+b99SHYcc7E7cDHjGXgWlC5jEI9h80R822wBU0HcbODkAQ3uosvFhSq3gLpxwdimesZofkJ5ZbAmGIMj1GEWAfMGA49mxkv/cDFWry+6FM4mUW6A0301QUg4wK/8n6RrzRj1NUkevZj1smizHeqmBE+0BU5H/fR9HclErx3LMHlVlxSgEEEjNUx3B0bLO0OHppmEb4B3Tk1O3ZsquYyqZyb2lBTbrQwIDAQAB'
 }
