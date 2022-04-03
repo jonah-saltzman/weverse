@@ -49,7 +49,7 @@ export class WeverseClient implements WeverseClientSettings {
             )
             if (this.handleResponse(response, urls.login)) {
                 const credentials = response.data
-                console.log(credentials)
+                //console.log(credentials)
                 if (validateWeverseLogin(credentials)) {
                     this._credentials = credentials
                     this._authorized = true

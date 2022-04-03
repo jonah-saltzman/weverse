@@ -39,5 +39,8 @@
     "axios": "^0.26.1",
     "node-fetch": "^3.2.3",
     "node-rsa": "^1.1.1"
+  },
+  "directories": {
+      "test": "tests"
   }
 }
