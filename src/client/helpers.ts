@@ -23,27 +23,15 @@ export function encryptPassword(pass: string, pubKey: string | null): string | n
 
 export const validateStatus = (status: number) => status >= 200 && status < 500
 
-export class WeverseLoginPayload implements WeverseLoginPayloadInterface {
-    grant_type: 'password'
-    client_id: 'weverse-test'
-    username: string
-    password: string
-    constructor(credentials: WeversePasswordAuthorization) {
-        const publicKey = readKey()
-        const encryptedPassword = encryptPassword(credentials.password, publicKey)
-        if (encryptedPassword === null) throw 'Error encrypting Weverse password'
-        this.username = credentials.username
-        this.password = encryptedPassword
-        this.client_id = 'weverse-test'
-        this.grant_type = 'password'
-    }
-    public get payload(): WeverseLoginPayloadInterface {
-        return {
-            grant_type: this.grant_type,
-            client_id: this.client_id,
-            username: this.username,
-            password: this.password
-        }
+export function createLoginPayload(credentials: WeversePasswordAuthorization): WeverseLoginPayloadInterface {
+    const publicKey = readKey()
+    const encryptedPassword = encryptPassword(credentials.password, publicKey)
+    if (encryptedPassword === null) throw 'Error encrypting Weverse password'
+    return {
+        username: credentials.username,
+        password: encryptedPassword,
+        grant_type: 'password',
+        client_id: 'weverse-test'
     }
 }
 

@@ -1,1 +1,1 @@
-export { WeverseClient, encryptPassword } from './client'
+export { WeverseClient } from './client'
