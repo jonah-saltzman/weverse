@@ -6,7 +6,8 @@
     "test": "jest",
     "tsc": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json",
     "copy": "copyfiles -f src/client/publicCert.txt lib/cjs/client && copyfiles -f src/client/publicCert.txt lib/esm/client",
-    "prepublish": "npm run tsc && npm run copy"
+    "prepublish": "npm run tsc && npm run copy",
+    "buildtest": "npm run tsc && npm run test"
   },
   "repository": {
     "type": "git",
