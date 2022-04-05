@@ -1,5 +1,6 @@
 import { 
     WeverseAuthorization,
+    WeverseClientSettings,
     WeverseOauthCredentials,
     WeversePasswordAuthorization,
     WeverseTokenAuthorization,
