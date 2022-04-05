@@ -31,10 +31,8 @@ export interface WeverseCommunityProps {
     homeBanner: URL
     icon: URL
     banner: URL
-    fullName: string
+    fullName: string[]
     membersOnly: boolean
-    artists: WeverseArtist[]
-    tabs: WeverseTab[]
 }
 
 export interface WeverseNotificationProps {

@@ -1,11 +1,10 @@
 import path from 'path'
 import fs from 'fs'
 import NodeRSA from 'node-rsa'
-import { WeverseLoginPayloadInterface, WeversePasswordAuthorization, WeverseAuthorization, WeverseTokenAuthorization } from '../types'
+import { WeverseLoginPayloadInterface, WeversePasswordAuthorization, WeverseAuthorization, WeverseTokenAuthorization, WeverseOauthCredentials, WeverseRefreshPayload, WeverseCommunityProps } from '../types'
 
 export function readKey(): string | null {
     try {
-        console.log(path.join(__dirname, './publicCert.txt'))
         return fs.readFileSync(path.join(__dirname, './publicCert.txt'), 'utf-8')
     } catch(e) {
         console.log('Weverse: ', e)
@@ -31,6 +30,14 @@ export function createLoginPayload(credentials: WeversePasswordAuthorization): W
         username: credentials.username,
         password: encryptedPassword,
         grant_type: 'password',
+        client_id: 'weverse-test'
+    }
+}
+
+export function createRefreshPayload(credentials: WeverseOauthCredentials): WeverseRefreshPayload {
+    return {
+        refresh_token: credentials.refresh_token,
+        grant_type: 'refresh_token',
         client_id: 'weverse-test'
     }
 }

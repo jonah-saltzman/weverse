@@ -5,7 +5,9 @@ import {
     WeversePasswordAuthorization,
     WeverseTokenAuthorization,
     isWeverseLogin, 
-    WeverseLoginPayloadInterface} from "../types"
+    WeverseLoginPayloadInterface,
+    WeverseInitOptions, 
+    GetCommunitiesOptions } from "../types"
 
 import { 
     WeverseUrl as urls,
@@ -15,7 +17,10 @@ import axios, { AxiosResponse } from 'axios'
 
 import { 
     isWeversePasswordAuthorization,
-    createLoginPayload } from "./helpers"
+    createLoginPayload,
+    createRefreshPayload } from "./helpers"
+import { WeverseCommunity } from "../models"
+import { toCommunityProps } from "./apiconverters"
 
 export class WeverseClient {
 
@@ -43,6 +48,28 @@ export class WeverseClient {
         } else {
             this._authType = 'password'
         }
+    }
+
+    public async init(options?: WeverseInitOptions): Promise<void> {
+        if (!await this.checkLogin()) return
+        const allCommunities = await this.getCommunities({init: true})
+        if (allCommunities) {
+            console.log('got communities')
+            console.log(allCommunities)
+        }
+    }
+
+    public async tryRefreshToken(): Promise<boolean> {
+        if (!this._credentials) return false
+        const refreshPayload = createRefreshPayload(this._credentials)
+        const response = await axios.post(urls.login, refreshPayload, { validateStatus })
+        const credentials = response.data
+        if (isWeverseLogin(credentials)) {
+            this._credentials = credentials
+            this._headers = { Authorization: 'Bearer ' + credentials.access_token }
+            return true
+        }
+        return false
     }
     
     public async login(credentials?: WeversePasswordAuthorization): Promise<void> {
@@ -88,6 +115,34 @@ export class WeverseClient {
         }
     }
 
+    public async checkLogin(): Promise<boolean> {
+        if (this._authType === 'password') {
+            await this.login()
+            if (!this._authorized) {
+                console.log('Weverse: login failed. Check username + password, or provide a token instead')
+                return false
+            }
+        }
+        if (!await this.checkToken()) {
+            console.log('Weverse: invalid token / unable to refresh')
+            return false
+        }
+        return true
+    }
+
+    public async getCommunities(opts?: GetCommunitiesOptions): Promise<WeverseCommunity[] | null> {
+        if (!opts || !opts.init) {
+            if (!await this.checkLogin()) return null
+        }
+        console.log('ready to get communities')
+        const response = await axios.get(urls.communities, { headers: this._headers })
+        if (this.handleResponse(response, urls.communities) && response.data.communities) {
+            const communities = response.data.communities
+            return communities.map(toCommunityProps)
+        }
+        return null
+    }
+
     protected createLoginPayload(): void {
         try {
             let payload: WeverseLoginPayloadInterface | null = null
@@ -114,7 +169,12 @@ export class WeverseClient {
                 { headers: this._headers, validateStatus }
             )
             this.handleResponse(response, urls.checkToken)
-            return this._authorized = response.status === 200
+            if (response.status === 200) {
+                this._authorized = true
+                return true
+            } else {
+                return this._authorized = await this.tryRefreshToken()
+            }
         } catch(e) {
             this.log(e)
             this._authorized = false
@@ -122,15 +182,15 @@ export class WeverseClient {
         }
     }
 
-    public async getAllCommunities(): Promise<void> {
-        try {
-            if (!this.authorized && !await this.checkToken()) return
-            const response = await axios.get(urls.communities, { headers: this._headers })
-            console.log(response.data)
-        } catch(e) {
-            console.log(e)
-        }
-    }
+    // public async getAllCommunities(): Promise<void> {
+    //     try {
+    //         if (!this.authorized && !await this.checkToken()) return
+    //         const response = await axios.get(urls.communities, { headers: this._headers })
+    //         console.log(response.data)
+    //     } catch(e) {
+    //         console.log(e)
+    //     }
+    // }
 
     protected handleResponse(response: AxiosResponse, url: string): boolean {
         if (response.status === 200) return true

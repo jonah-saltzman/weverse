@@ -8,3 +8,15 @@ export const isWeverseLogin = (res: any): res is WeverseOauthCredentials => {
     res.refresh_token && typeof res.refresh_token === 'string' &&
     res.weMemberId && typeof res.weMemberId === 'number'
 }
+
+// export interface WeverseCommunityProps {
+//     id: number
+//     name: string
+//     description: string
+//     memberCount?: number
+//     homeBanner: URL
+//     icon: URL
+//     banner: URL
+//     fullName: string
+//     membersOnly: boolean
+// }
