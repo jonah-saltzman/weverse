@@ -33,6 +33,7 @@ export class WeverseClient {
     protected _refreshToken?: string
     protected _weverseId?: number
     protected _headers: {[key: string]: string} | undefined
+    public communities: WeverseCommunity[] | null = null
 
     constructor(authorization: WeverseAuthorization, verbose?: boolean) {
         if (authorization === undefined) throw 'Must instantiate with Weverse token or login'
@@ -54,8 +55,7 @@ export class WeverseClient {
         if (!await this.checkLogin()) return
         const allCommunities = await this.getCommunities({init: true})
         if (allCommunities) {
-            console.log('got communities')
-            console.log(allCommunities)
+            this.communities = allCommunities
         }
     }
 

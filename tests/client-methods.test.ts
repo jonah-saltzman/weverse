@@ -65,6 +65,7 @@ describe('client methods - token provided', () => {
         const result = await myClient.checkToken()
         expect(mockGet).toBeCalledTimes(1)
         expect(result).toBe(false)
+        expect(myClient.authorized).toBe(false)
     })
 })
 
@@ -88,6 +89,9 @@ describe('client methods - login provided', () => {
         //@ts-ignore
         expect(myClient.loginPayload.password).not.toBe(myClient.authorization.password)
         expect(typeof myClient?.loginPayload?.password === 'string').toBe(true)
+        // authType should be set to 'password'
+        expect(myClient.authType).toBe('password')
+        expect(myClient.authorized).toBe(false)
     })
 
     it('handles login success', async() => {
