@@ -1,4 +1,4 @@
-import { AssignType } from "."
+import { AssignType } from "../client"
 import { WeverseArtistProps } from "../types"
 
 export class WeverseArtist extends AssignType<WeverseArtistProps>() {

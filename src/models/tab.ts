@@ -1,4 +1,4 @@
-import { AssignType } from "."
+import { AssignType } from "../client"
 import { WeverseTabProps } from "../types"
 
 export class WeverseTab extends AssignType<WeverseTabProps>() {

@@ -1,7 +1,5 @@
-import { WeverseCommunity, WeverseArtist, WeverseTab } from "../models"
-
 export interface WeverseArtistProps {
-    id: number
+    artistId: number
     idInCommunity: number
     name: string
     altNames: string[]
@@ -10,7 +8,6 @@ export interface WeverseArtistProps {
     profilePic: URL
     isBirthday: boolean
     groupName: string
-    maxComments: number
     communityId: number
     isEnabled: boolean
     newPublicPost: boolean
@@ -19,7 +16,7 @@ export interface WeverseArtistProps {
     lastPostCreatedAt: Date
     lastPostExpiresAt: Date
     birthdayImgUrl: URL
-    community: WeverseCommunity
+    //community: WeverseCommunity
     //posts: Post[]
 }
 

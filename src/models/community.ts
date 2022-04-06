@@ -1,5 +1,6 @@
-import { AssignType, WeverseArtist, WeverseTab } from "."
+import { WeverseArtist, WeverseTab } from "."
 import { WeverseCommunityProps } from "../types"
+import { AssignType } from "../client"
 
 export class WeverseCommunity extends AssignType<WeverseCommunityProps>() {
     artists: WeverseArtist[] | null

@@ -19,8 +19,10 @@ import {
     isWeversePasswordAuthorization,
     createLoginPayload,
     createRefreshPayload } from "./helpers"
+
 import { WeverseArtist, WeverseCommunity, WeverseTab } from "../models"
-import { toCommunityProps } from "./apiconverters"
+
+import { toCommunity, toArtist, toTab } from "./apiconverters"
 
 export class WeverseClient {
 
@@ -58,9 +60,9 @@ export class WeverseClient {
         if (allCommunities) {
             this.communities = allCommunities
             const communityData = await Promise.all(this.communities.map(async (c: WeverseCommunity) => {
-                return this.getCommunityArtistsTabs(c.id)
+                return this.getCommunityArtistsTabs(c)
             }))
-            console.log(communityData)
+            // console.log(communityData)
         }
     }
 
@@ -143,7 +145,7 @@ export class WeverseClient {
         const response = await axios.get(urls.communities, { headers: this._headers })
         if (this.handleResponse(response, urls.communities) && response.data.communities) {
             const communities = response.data.communities
-            const allCommunities = communities.map(toCommunityProps)
+            const allCommunities: WeverseCommunity[] = communities.map(toCommunity)
             const communityMap = new Map<number, WeverseCommunity>()
             allCommunities.forEach((c: WeverseCommunity) => {
                 communityMap.set(c.id, c)
@@ -154,19 +156,22 @@ export class WeverseClient {
         return null
     }
 
-    public async getCommunityArtistsTabs(id: number): Promise<[WeverseArtist[], WeverseTab[]] | null> {
-        let artists: WeverseArtist[]
-        let tabs: WeverseTab[]
+    public async getCommunityArtistsTabs(c: WeverseCommunity): Promise<[WeverseArtist[], WeverseTab[]] | null> {
         if (this._communityMap) {
-            const community = this._communityMap.get(id)
+            const community = this._communityMap.get(c.id)
             if (community && community.artists && community.tabs) {
                 return [community.artists, community.tabs]
             }
         }
-        const response = await axios.get(urls.community(id), { headers: this._headers })
-        if (this.handleResponse(response, urls.community(id))) {
+        const response = await axios.get(urls.community(c.id), { headers: this._headers })
+        if (this.handleResponse(response, urls.community(c.id))) {
             const data = response.data
-            console.log(data)
+            if (data.artists && data.tabs) {
+                const artists = data.artists.map(toArtist) as WeverseArtist[]
+                const tabs = data.tabs.map(toTab) as WeverseTab[]
+                c.addArtistsTabs(artists, tabs)
+                return [artists, tabs]
+            }
         }
         return null
     }

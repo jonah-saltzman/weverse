@@ -50,3 +50,11 @@ export function isWeversePasswordAuthorization(
         typeof (val as WeversePasswordAuthorization).password === 'string' && 
         typeof (val as WeversePasswordAuthorization).username === 'string'
 }
+
+export function AssignType<T extends object>() {
+    return class {
+        constructor(t: T) {
+            Object.assign(this, t)
+        }
+    } as { new(t: T): T }
+}

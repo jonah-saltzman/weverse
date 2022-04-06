@@ -1,4 +1,4 @@
-import { AssignType } from "."
+import { AssignType } from "../client"
 import { WeverseNotificationProps } from "../types"
 
 export class WeverseNotification extends AssignType<WeverseNotificationProps>() {
