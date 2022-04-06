@@ -1,8 +1,8 @@
 import { AssignType } from "../client"
-import { WeverseArtistProps } from "../types"
+import { Artist } from "../types"
 
-export class WeverseArtist extends AssignType<WeverseArtistProps>() {
-    constructor(props: WeverseArtistProps) {
+export class WeverseArtist extends AssignType<Artist>() {
+    constructor(props: Artist) {
         super(props)
     }
 }

@@ -20,17 +20,17 @@ export interface WeverseArtistProps {
     //posts: Post[]
 }
 
-export interface WeverseCommunityProps {
-    id: number
-    name: string
-    description: string
-    memberCount?: number
-    homeBanner: URL
-    icon: URL
-    banner: URL
-    fullName: string[]
-    membersOnly: boolean
-}
+// export interface WeverseCommunityProps {
+//     id: number
+//     name: string
+//     description: string
+//     memberCount?: number
+//     homeBanner: URL
+//     icon: URL
+//     banner: URL
+//     fullName: string[]
+//     membersOnly: boolean
+// }
 
 export interface WeverseNotificationProps {
     id: number

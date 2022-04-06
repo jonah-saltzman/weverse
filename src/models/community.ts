@@ -1,11 +1,11 @@
 import { WeverseArtist, WeverseTab } from "."
-import { WeverseCommunityProps } from "../types"
+import { Community } from "../types"
 import { AssignType } from "../client"
 
-export class WeverseCommunity extends AssignType<WeverseCommunityProps>() {
+export class WeverseCommunity extends AssignType<Community>() {
     artists: WeverseArtist[] | null
     tabs: WeverseTab[] | null
-    constructor(props: WeverseCommunityProps) {
+    constructor(props: Community) {
         super(props)
         this.artists = null
         this.tabs = null

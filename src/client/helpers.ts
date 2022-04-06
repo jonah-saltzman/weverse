@@ -1,7 +1,22 @@
 import path from 'path'
 import fs from 'fs'
 import NodeRSA from 'node-rsa'
-import { WeverseLoginPayloadInterface, WeversePasswordAuthorization, WeverseAuthorization, WeverseTokenAuthorization, WeverseOauthCredentials, WeverseRefreshPayload, WeverseCommunityProps } from '../types'
+import { WeverseLoginPayloadInterface, WeversePasswordAuthorization, WeverseAuthorization, WeverseTokenAuthorization, WeverseOauthCredentials, WeverseRefreshPayload, WeverseArtistProps } from '../types'
+import axios, { AxiosRequestConfig } from 'axios'
+
+// export async function weverseGet<T>(url: string, config?: AxiosRequestConfig): T[] | null {
+//     const response = await axios.get(url, config)
+//     if (response.status !== 200) {
+//         return null
+//     } else {
+//         // if T is a Community, we need to parse the data as a Community
+//         if (typeof T === CommunityProps) {
+//             return response.data.map((community: WeverseCommunityProps) => new WeverseCommunity(community))
+//         } else {
+//             return response.data.map((artist: WeverseArtistProps) => new WeverseArtist(artist))
+//         }
+//     }
+// }
 
 export function readKey(): string | null {
     try {
