@@ -6,10 +6,10 @@ import {
     WeverseTokenAuthorization,
     isWeverseLogin, 
     WeverseLoginPayloadInterface,
-    WeverseInitOptions, 
-    GetCommunitiesOptions, 
+    WeverseInitOptions,
     Community, CommunityArray,
-    Artist, ArtistArray} from "../types"
+    Artist, ArtistArray, 
+    GetOptions, NotificationArray, Notification, isNotification } from "../types"
 
 import { 
     WeverseUrl as urls,
@@ -22,9 +22,9 @@ import {
     createLoginPayload,
     createRefreshPayload } from "./helpers"
 
-import { WeverseArtist, WeverseCommunity, WeverseTab } from "../models"
+import { WeverseArtist, WeverseCommunity, WeverseNotification, ClientNotifications } from "../models"
 
-import { toCommunity, toArtist, toTab } from "./apiconverters"
+import { toCommunity, toArtist, toNotification } from "./apiconverters"
 
 export class WeverseClient {
 
@@ -37,8 +37,11 @@ export class WeverseClient {
     protected _refreshToken?: string
     protected _weverseId?: number
     protected _headers: {[key: string]: string} | undefined
-    public communities: WeverseCommunity[] | null = null
-    protected _communityMap: Map<number, WeverseCommunity> | null = null
+    public communities: WeverseCommunity[] = []
+    protected _communityMap: Map<number, WeverseCommunity> = new Map<number, WeverseCommunity>()
+    public artists: WeverseArtist[] = []
+    protected _artistMap: Map<number, WeverseArtist> = new Map<number, WeverseArtist>()
+    public notifications = new ClientNotifications()
 
     constructor(authorization: WeverseAuthorization, verbose?: boolean) {
         if (authorization === undefined) throw 'Must instantiate with Weverse token or login'
@@ -57,12 +60,18 @@ export class WeverseClient {
     }
 
     public async init(options?: WeverseInitOptions): Promise<void> {
-        if (!await this.checkLogin()) return
-        await this.getCommunities({init: true})
-        if (this.communities) {
-            this.log('Weverse: communities initialized')
-            await Promise.all(this.communities.map((c: WeverseCommunity) => this.getCommunityArtists(c)))
-            this.communities.forEach((c: WeverseCommunity) => c.artists?.forEach((a: WeverseArtist) => console.log))
+        try {
+            if (!await this.checkLogin()) return
+            await this.getCommunities({init: true})
+            if (this.communities) {
+                this.log('Weverse: communities initialized')
+                await Promise.all(this.communities.map((c: WeverseCommunity) => this.getCommunityArtists(c, {init: true})))
+                this.log('Weverse: artists initialized')
+                await this.getRecentNotifications()
+            }
+        } catch(e) {
+            console.log('Weverse: initialization failed')
+            console.log(e)
         }
     }
 
@@ -103,7 +112,6 @@ export class WeverseClient {
             )
             if (this.handleResponse(response, urls.login)) {
                 const credentials = response.data
-                console.log(credentials)
                 if (isWeverseLogin(credentials)) {
                     this._credentials = credentials
                     this._authorized = true
@@ -137,42 +145,59 @@ export class WeverseClient {
         return true
     }
 
-    public async getCommunities(opts?: GetCommunitiesOptions): Promise<WeverseCommunity[] | null> {
+    public async getCommunities(opts?: GetOptions): Promise<WeverseCommunity[] | null> {
         if (!opts || !opts.init) {
             if (!await this.checkLogin()) return null
         }
         //if (this.communities) return this.communities
         const response = await axios.get(urls.communities, { headers: this._headers })
         if (this.handleResponse(response, urls.communities) && response.data.communities) {
-            console.log(response.data.communities)
-            const communities = CommunityArray(response.data.communities) 
-            const allCommunities: WeverseCommunity[] = communities.map(toCommunity)
-            const communityMap = new Map<number, WeverseCommunity>()
-            allCommunities.forEach((c: WeverseCommunity) => {
-                communityMap.set(c.id, c)
+            const communities = CommunityArray(response.data.communities).map(toCommunity)
+            communities.forEach((c: WeverseCommunity) => {
+                this._communityMap.set(c.id, c)
             })
-            this._communityMap = communityMap
-            this.communities = allCommunities
-            return allCommunities
+            this.communities = communities
+            return communities
         }
         return null
     }
 
-    public async getCommunityArtists(c: WeverseCommunity): Promise<WeverseArtist[] | null> {
-        if (this._communityMap) {
-            const community = this._communityMap.get(c.id)
-            if (community && community.artists) {
-                return community.artists
-            }
+    public async getCommunityArtists(c: WeverseCommunity, opts?: GetOptions): Promise<WeverseArtist[] | null> {
+        if (!opts || !opts.init) {
+            if (!await this.checkLogin()) return null
         }
         const response = await axios.get(urls.community(c.id), { headers: this._headers })
         if (this.handleResponse(response, urls.community(c.id))) {
             const data = response.data
             if (data.artists) {
-                const artists = ArtistArray(data.artists).map(toArtist)
-                c.artists = artists
-                return artists
+                const artists = ArtistArray(data.artists).map((a: Artist) => toArtist(a, c))
+                c.addArtists(artists)
+                this.artists.push(...artists)
+                artists.forEach((a: WeverseArtist) => {
+                    this._artistMap.set(a.id, a)
+                })
             }
+        }
+        return null
+    }
+
+    public async getRecentNotifications(): Promise<WeverseNotification[] | null> {
+        if (!await this.checkLogin()) return null
+        const response = await axios.get(urls.allNotifications, { headers: this._headers })
+        if (this.handleResponse(response, urls.allNotifications)) {
+            const notifications = NotificationArray(response.data.notifications).map((n: Notification) => {
+                if (n.communityId === 0) return
+                const artist = this._artistMap.get(n.artistId ?? -1)
+                const community = this._communityMap.get(n.communityId)
+                if (!community) {
+                    this.log('Weverse: failed to find community for notification')
+                    console.log(n)
+                    throw new Error()
+                } else {
+                    return toNotification(n, community, artist)
+                }
+            }).filter(isNotification)
+            this.notifications.addMany(notifications)
         }
         return null
     }
@@ -215,16 +240,6 @@ export class WeverseClient {
             return false
         }
     }
-
-    // public async getAllCommunities(): Promise<void> {
-    //     try {
-    //         if (!this.authorized && !await this.checkToken()) return
-    //         const response = await axios.get(urls.communities, { headers: this._headers })
-    //         console.log(response.data)
-    //     } catch(e) {
-    //         console.log(e)
-    //     }
-    // }
 
     protected handleResponse(response: AxiosResponse, url: string): boolean {
         if (response.status === 200) return true

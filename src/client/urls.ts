@@ -7,7 +7,8 @@ enum WeverseUrlPrefixes {
 enum WeverseEndpoints {
     ME = 'users/me',
     LOGIN = 'api/v1/oauth/token',
-    COMMUNITIES = 'communities/'
+    COMMUNITIES = 'communities/',
+    NOTIFICATIONS = 'stream/notifications/',
 }
 
 export class WeverseUrl {
@@ -15,6 +16,7 @@ export class WeverseUrl {
     private static _login: URL
     private static _checkToken: URL
     private static _communities: URL
+    private static _allNotifications: URL
     static {
         WeverseUrl.base = 'weverse.io'
         const baseUrl = new URL('/', WeverseUrlPrefixes.API + WeverseUrl.base)
@@ -28,6 +30,8 @@ export class WeverseUrl {
         WeverseUrl._checkToken.pathname += WeverseEndpoints.ME
         WeverseUrl._communities = new URL(apiUrl)
         WeverseUrl._communities.pathname += WeverseEndpoints.COMMUNITIES
+        WeverseUrl._allNotifications = new URL(apiUrl)
+        WeverseUrl._allNotifications.pathname += WeverseEndpoints.NOTIFICATIONS
     }
     
     public static get checkToken(): string {
@@ -38,6 +42,9 @@ export class WeverseUrl {
     }
     public static get login(): string {
         return WeverseUrl._login.toString()
+    }
+    public static get allNotifications(): string {
+        return WeverseUrl._allNotifications.toString()
     }
 
     public static community(id: number): string {

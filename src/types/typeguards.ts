@@ -1,4 +1,5 @@
 import { WeverseOauthCredentials } from "."
+import { WeverseNotification } from "../models"
 
 export const isWeverseLogin = (res: any): res is WeverseOauthCredentials => {
     //console.log(res)
@@ -43,6 +44,11 @@ const url: TypeConverter<string, URL> = (val: unknown) => {
     return new URL(val)
 }
 
+const toNum: TypeConverter<string, number> = (val: string) => {
+    if (typeof val !== 'string') throw new Error()
+    return Number(val)
+}
+
 const date: TypeConverter<string, Date> = (val: unknown) => {
     if (typeof val !== 'string') throw new Error()
     return new Date(val)
@@ -51,13 +57,35 @@ const date: TypeConverter<string, Date> = (val: unknown) => {
 const optionalDate: TypeConverter<string | undefined, Date | undefined> = (val: unknown) => {
     if (typeof val === 'string') return date(val)
     return undefined
-    throw new Error()
 }
 
 const array = <T>(inner: TypeGuard<T>) => (val: unknown): T[] => {
     if (!Array.isArray(val)) throw new Error();
     return val.map(inner);
 }
+
+const notif: TypeConverter<string, NotifType> = (val: unknown) => {
+    if (typeof val !== 'string') throw new Error()
+    if (isNotif(val)) return val as NotifType
+    throw new Error()
+}
+
+const isNotif = (val: string): val is NotifType => {
+    for (const [k, v] of Object.entries(NotificationType)) {
+        if (v === val) return true
+    }
+    return false
+}
+
+const optional = <T>(inner: TypeGuard<T>) => (val: unknown): T | undefined => {
+    if (val === undefined) return undefined
+    return inner(val)
+}
+
+// const optionalConverter = <T, U>(inner: TypeConverter<T, U>) => (val: unknown): U | undefined => {
+//     if (val === undefined) return undefined
+//     return inner(val)
+// }
 
 const object = <T extends Record<string, TypeGuard<any> | TypeConverter<any, any>>>(inner: T) => {
     return (val: unknown): { [P in keyof T]: ReturnType<T[P]> } => {
@@ -83,7 +111,7 @@ export const Community = object({
     bannerImgPath: url,
     fullname: array(string),
     fcMember: boolean,
-    membershipName: optionalString,
+    membershipName: optional(string),
 })
 export const CommunityArray = array(Community)
 
@@ -103,7 +131,7 @@ export const Artist = object({
     communityId: number,
     hasNewToFans: boolean,
     hasNewPrivateToFans: boolean,
-    toFanLastId: optionalNumber,
+    toFanLastId: optional(number),
     toFanLastCreatedAt: optionalDate,
     birthdayImgUrl: url,
 })
@@ -111,6 +139,68 @@ export const ArtistArray = array(Artist)
 
 export type Artist = ReturnType<typeof Artist>
 export type ArtistArray = Artist[]
+
+export enum NotificationType {
+    MEDIA = 'MEDIA',
+    SERVICE = 'SERVICE_NOTICE',
+    FANS = 'TO_FANS',
+    POST = 'ARTIST_POST',
+    FAN_REPLY = 'COMMENT_DETAIL'
+}
+
+type NotifType = NotificationType
+
+export const ExtraInfo = object({
+    replyCommentId: toNum,
+    originContentId: toNum,
+    originContentType: notif,
+})
+
+type Info = ReturnType<typeof ExtraInfo>
+
+const isInfo = (val: unknown): val is Info => {
+    try {
+        ExtraInfo(val)
+        return true
+    } catch {
+        return false
+    }
+}
+
+type Empty = Record<any, never>
+
+export const optionalObject: TypeGuard<Info | Empty> = (val: unknown) => {
+    if (typeof val !== 'object') throw new Error()
+    if (isInfo(val)) return val
+    if (val === null) return {}
+    if (Object.keys(val).length !== 0) throw new Error()
+    return {}
+}
+
+export const Notification = object({
+    id: number,
+    message: string,
+    boldElement: string,
+    communityId: number,
+    communityName: string,
+    contentsExtraInfo: optionalObject,
+    contentsType: notif,
+    contentsId: number,
+    notifiedAt: date,
+    iconImageUrl: url,
+    artistId: optional(number),
+    isMembershipContent: boolean,
+    isWebOnly: boolean,
+    platform: string,
+})
+
+export const NotificationArray = array(Notification)
+export type Notification = ReturnType<typeof Notification>
+export type NotificationArray = Notification[]
+
+export const isNotification = (n: WeverseNotification | undefined): n is WeverseNotification => {
+    return !!n
+}
 
 // {
 //     communityId: 14,

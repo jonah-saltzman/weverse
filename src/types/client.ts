@@ -42,6 +42,6 @@ export interface WeverseInitOptions {
     media?: boolean
 }
 
-export interface GetCommunitiesOptions {
+export interface GetOptions {
     init: boolean
 }
