@@ -19,7 +19,7 @@ import {
     isWeversePasswordAuthorization,
     createLoginPayload,
     createRefreshPayload } from "./helpers"
-import { WeverseCommunity } from "../models"
+import { WeverseArtist, WeverseCommunity, WeverseTab } from "../models"
 import { toCommunityProps } from "./apiconverters"
 
 export class WeverseClient {
@@ -34,6 +34,7 @@ export class WeverseClient {
     protected _weverseId?: number
     protected _headers: {[key: string]: string} | undefined
     public communities: WeverseCommunity[] | null = null
+    protected _communityMap: Map<number, WeverseCommunity> | null = null
 
     constructor(authorization: WeverseAuthorization, verbose?: boolean) {
         if (authorization === undefined) throw 'Must instantiate with Weverse token or login'
@@ -56,6 +57,10 @@ export class WeverseClient {
         const allCommunities = await this.getCommunities({init: true})
         if (allCommunities) {
             this.communities = allCommunities
+            const communityData = await Promise.all(this.communities.map(async (c: WeverseCommunity) => {
+                return this.getCommunityArtistsTabs(c.id)
+            }))
+            console.log(communityData)
         }
     }
 
@@ -134,11 +139,34 @@ export class WeverseClient {
         if (!opts || !opts.init) {
             if (!await this.checkLogin()) return null
         }
-        console.log('ready to get communities')
+        //if (this.communities) return this.communities
         const response = await axios.get(urls.communities, { headers: this._headers })
         if (this.handleResponse(response, urls.communities) && response.data.communities) {
             const communities = response.data.communities
-            return communities.map(toCommunityProps)
+            const allCommunities = communities.map(toCommunityProps)
+            const communityMap = new Map<number, WeverseCommunity>()
+            allCommunities.forEach((c: WeverseCommunity) => {
+                communityMap.set(c.id, c)
+            })
+            this._communityMap = communityMap
+            return allCommunities
+        }
+        return null
+    }
+
+    public async getCommunityArtistsTabs(id: number): Promise<[WeverseArtist[], WeverseTab[]] | null> {
+        let artists: WeverseArtist[]
+        let tabs: WeverseTab[]
+        if (this._communityMap) {
+            const community = this._communityMap.get(id)
+            if (community && community.artists && community.tabs) {
+                return [community.artists, community.tabs]
+            }
+        }
+        const response = await axios.get(urls.community(id), { headers: this._headers })
+        if (this.handleResponse(response, urls.community(id))) {
+            const data = response.data
+            console.log(data)
         }
         return null
     }

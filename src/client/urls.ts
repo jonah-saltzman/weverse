@@ -7,7 +7,7 @@ enum WeverseUrlPrefixes {
 enum WeverseEndpoints {
     ME = 'users/me',
     LOGIN = 'api/v1/oauth/token',
-    COMMUNITIES = 'communities'
+    COMMUNITIES = 'communities/'
 }
 
 export class WeverseUrl {
@@ -38,5 +38,11 @@ export class WeverseUrl {
     }
     public static get login(): string {
         return WeverseUrl._login.toString()
+    }
+
+    public static community(id: number): string {
+        const url = new URL(WeverseUrl._communities.toString())
+        url.pathname += id.toString()
+        return url.toString()
     }
 }
