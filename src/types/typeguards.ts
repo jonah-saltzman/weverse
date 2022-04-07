@@ -146,7 +146,8 @@ export enum NotificationType {
     SERVICE = 'SERVICE_NOTICE',
     FANS = 'TO_FANS',
     POST = 'ARTIST_POST',
-    FAN_REPLY = 'COMMENT_DETAIL'
+    FAN_REPLY = 'COMMENT_DETAIL',
+    NOTICE = 'NOTICE'
 }
 
 type NotifType = NotificationType
@@ -229,15 +230,28 @@ export const Video = object({
     playTime: number
 })
 
+export const artistInfo = object({
+    artistId: number,
+    communityId: number,
+})
+
+export const Comment = object({
+    id: number,
+    body: string,
+    commentCount: number,
+    likeCount: number,
+    postId: number,
+    createdAt: date,
+    updatedAt: date,
+    communityUser: artistInfo
+})
+
 export const Post = object({
     id: number,
-    communityUser: object({
-        artistId: number,
-        communityId: number,
-    }),
+    communityUser: artistInfo,
     communityTabId: number,
     body: string,
-    // artistComments
+    artistComments: array(Comment),
     commentCount: number,
     likeCount: number,
     createdAt: date,

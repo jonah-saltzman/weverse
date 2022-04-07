@@ -3,6 +3,7 @@ import { Community } from "../types"
 import { AssignType } from "../client"
 
 export class WeverseCommunity extends AssignType<Community>() {
+    newPosts: WeversePost[]
     artists: WeverseArtist[]
     artistMap: Map<number, WeverseArtist>
     tabs: WeverseTab[]
@@ -15,6 +16,7 @@ export class WeverseCommunity extends AssignType<Community>() {
         this.artistMap = new Map<number, WeverseArtist>()
         this.tabs = []
         this.tabMap = new Map<number, WeverseTab>()
+        this.newPosts = []
     }
     public toString() {
         return this.name
@@ -28,10 +30,15 @@ export class WeverseCommunity extends AssignType<Community>() {
     }
 
     public addPosts(posts: WeversePost[]) {
-        this.posts = this.posts.concat(...posts)
-        for (const post of posts) {
-            this.postsMap.set(post.id, post)
-        }
+        this.newPosts = []
+        posts.forEach(p => {
+            if (!this.postsMap.has(p.id)) {
+                this.posts.push(p)
+                this.postsMap.set(p.id, p)
+                this.newPosts.push(p)
+            }
+        })
+        return this.newPosts
     }
 
     public getArtist(id: number): WeverseArtist | undefined {

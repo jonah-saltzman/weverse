@@ -47,6 +47,13 @@ export class WeverseUrl {
         return WeverseUrl._allNotifications.toString()
     }
 
+    public static notifications(from?: number): string {
+        const url = new URL(WeverseUrl._allNotifications.toString())
+        if (from === undefined || from === 0) return url.toString()
+        url.searchParams.set('from', from.toString())
+        return url.toString()
+    }
+
     public static community(id: number): string {
         const url = new URL(WeverseUrl._communities.toString())
         url.pathname += (id.toString() + '/')
@@ -56,6 +63,13 @@ export class WeverseUrl {
     public static communityPosts(id: number): string {
         const url = new URL(WeverseUrl.community(id))
         url.pathname += 'posts/artistTab/'
+        return url.toString()
+    }
+
+    public static communityPostsPages(id: number, from?: number) {
+        const url = new URL(WeverseUrl.communityPosts(id))
+        if (from === undefined || from === 0) return url.toString()
+        url.searchParams.set('from', from.toString())
         return url.toString()
     }
 

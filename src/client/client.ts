@@ -72,12 +72,14 @@ export class WeverseClient {
             this.log('Weverse: communities initialized')
             await Promise.all(this.communities.map((c: WeverseCommunity) => this.getCommunityArtists(c, {init: true})))
             this.log('Weverse: artists initialized')
-            await this.getRecentNotifications()
-            this.log('Weverse: recent notifications retreived')
-            if (options?.allPosts) {
-                await Promise.all(this.communities.map((c: WeverseCommunity) => this.getCommunityPosts(c, {init: true})))
-                this.log('Weverse: all posts retreived')
-            }
+            await this.getNotifications(options?.allNotifications ? 0 : 1)
+            this.log('Weverse: notifications retreived')
+            await Promise.all(
+                this.communities.map((c: WeverseCommunity) => 
+                    this.getCommunityPosts(c, options?.allPosts ? 0 : 1)
+                )
+            )
+            this.log('Weverse: posts retreived')
         } catch(e) {
             console.log('Weverse: initialization failed')
             console.log(e)
@@ -92,6 +94,8 @@ export class WeverseClient {
         if (isWeverseLogin(credentials)) {
             this._credentials = credentials
             this._headers = { Authorization: 'Bearer ' + credentials.access_token }
+            this._authorized = true
+            this._refreshToken = credentials.refresh_token
             return true
         }
         return false
@@ -119,7 +123,7 @@ export class WeverseClient {
                 this._loginPayload,
                 { validateStatus }
             )
-            if (this.handleResponse(response, urls.login)) {
+            if (await this.handleResponse(response, urls.login)) {
                 const credentials = response.data
                 if (isWeverseLogin(credentials)) {
                     this._credentials = credentials
@@ -158,9 +162,8 @@ export class WeverseClient {
         if (!opts || !opts.init) {
             if (!await this.checkLogin()) return null
         }
-        //if (this.communities) return this.communities
         const response = await axios.get(urls.communities, { headers: this._headers })
-        if (this.handleResponse(response, urls.communities) && response.data.communities) {
+        if (await this.handleResponse(response, urls.communities) && response.data.communities) {
             const communities = CommunityArray(response.data.communities).map(toCommunity)
             communities.forEach((c: WeverseCommunity) => {
                 this._communityMap.set(c.id, c)
@@ -176,7 +179,7 @@ export class WeverseClient {
             if (!await this.checkLogin()) return null
         }
         const response = await axios.get(urls.community(c.id), { headers: this._headers })
-        if (this.handleResponse(response, urls.community(c.id))) {
+        if (await this.handleResponse(response, urls.community(c.id))) {
             const data = response.data
             if (data.artists) {
                 const artists = ArtistArray(data.artists).map((a: Artist) => toArtist(a, c))
@@ -192,51 +195,107 @@ export class WeverseClient {
 
     public async getRecentNotifications(): Promise<WeverseNotification[] | null> {
         if (!await this.checkLogin()) return null
-        const response = await axios.get(urls.allNotifications, { headers: this._headers })
-        if (this.handleResponse(response, urls.allNotifications)) {
-            const notifications = NotificationArray(response.data.notifications).map((n: Notification) => {
-                if (n.communityId === 0) return
-                const artist = this._artistMap.get(n.artistId ?? -1)
-                const community = this._communityMap.get(n.communityId)
-                if (!community) {
-                    this.log('Weverse: failed to find community for notification:')
-                    this.log(n)
-                    return
-                } else {
-                    return toNotification(n, community, artist)
-                }
-            }).filter(isNotification)
-            this.notifications.addMany(notifications)
-            return notifications
-        }
-        return null
+        return await this.getNotifications(1)
     }
 
-    public async getCommunityPosts(c: WeverseCommunity, opts?: GetOptions): Promise<WeversePost[] | null> {
-        if (!opts || !opts.init) {
-            if (!await this.checkLogin()) return null
+    public async getCommunityPosts(c: WeverseCommunity, pages: number): Promise<WeversePost[] | null>
+    public async getCommunityPosts(c: number, pages: number): Promise<WeversePost[] | null>
+    public async getCommunityPosts(c: WeverseCommunity | number, pages: number): Promise<WeversePost[] | null> {
+        let wvc: WeverseCommunity
+        if (typeof c === 'number') {
+            const temp = this._communityMap.get(c)
+            if (!temp) {
+                this.log('Weverse: community not found')
+                return null
+            } else {
+                wvc = temp
+            }
+        } else {
+            wvc = c
         }
-        const response = await axios.get(urls.communityPosts(c.id), { headers: this._headers })
-        if (this.handleResponse(response, urls.communityPosts(c.id))) {
-            const posts = PostArray(response.data.posts).map((p: Post) => {
-                const artist = this._artistMap.get(p.communityUser.artistId)
-                if (!artist) {
-                    this.log('Weverse: failed to find artist for post:')
-                    this.log(p)
-                    return
-                } else {
-                    return toPost(p, c, artist)
+        if (pages === undefined) pages = 1
+        if (pages <= -1) return null
+        if (pages === 0) pages = Infinity
+        let count = 0
+        let from = 0
+        const posts: WeversePost[] = []
+        while (count <= pages) {
+            const response = await axios.get(
+                urls.communityPostsPages(wvc.id, from),
+                { headers: this._headers }
+            )
+            if (await this.handleResponse(response, urls.communityPostsPages(wvc.id, from))) {
+                const data = response.data
+                if (data.posts) {
+                    const newPosts = PostArray(data.posts).map((p: Post) => {
+                        const artist = this._artistMap.get(p.communityUser.artistId)
+                        if (!artist) {
+                            this.log('Weverse: failed to find artist for post:')
+                            this.log(p)
+                            return
+                        } else {
+                            return toPost(p, wvc, artist)
+                        }
+                    }).filter(isPost)
+                    const added = wvc.addPosts(newPosts)
+                    this.posts.push(...added)
+                    added.forEach((p: WeversePost) => {
+                        this._postsMap.set(p.id, p)
+                    })
+                    posts.push(...added)
                 }
-            }).filter(isPost)
-            c.addPosts(posts)
-            this.posts.push(...posts)
-            posts.forEach((p: WeversePost) => {
-                this._postsMap.set(p.id, p)
-            })
-            await Promise.all(posts.map(async (p: WeversePost) => p.getVideoUrls(this._headers)))
-            return posts
+                if (typeof data.isEnded === 'boolean' && data.isEnded) break
+                from = data.lastId
+                if (from == null || (typeof from === 'number' && from <= 0)) {
+                    this.log('Weverse: malformed response from notifications endpoint')
+                    break
+                }
+                count++
+            } else {
+                this.log('Weverse: failed to get notifications after ' + count + ' pages')
+                return posts
+            }
         }
-        return null
+        return posts
+    }
+
+    public async getNotifications(pages?: number): Promise<WeverseNotification[] | null> {
+        if (pages === undefined) pages = 1
+        if (pages <= -1) return null
+        if (pages === 0) pages = Infinity
+        let count = 0
+        let from = 0
+        const notifications: WeverseNotification[] = []
+        while (count <= pages) {
+            const response = await axios.get(urls.notifications(from), { headers: this._headers })
+            const { data } = response
+            if (await this.handleResponse(response, urls.notifications(from))) {
+                const n = NotificationArray(data.notifications).map((n: Notification) => {
+                    if (n.communityId === 0) return
+                    const artist = this._artistMap.get(n.artistId ?? -1)
+                    const community = this._communityMap.get(n.communityId)
+                    if (!community) {
+                        this.log('Weverse: failed to find community for notification:')
+                        this.log(n)
+                        return
+                    } else {
+                        return toNotification(n, community, artist)
+                    }
+                }).filter(isNotification)
+                notifications.push(...this.notifications.addMany(n))
+                if (typeof data.isEnded === 'boolean' && data.isEnded) break
+                from = data.lastId
+                if (from == null || (typeof from === 'number' && from <= 0)) {
+                    this.log('Weverse: malformed response from notifications endpoint')
+                    break
+                }
+                count++
+            } else {
+                this.log('Weverse: failed to get notifications after ' + count + ' pages')
+                return notifications
+            }
+        }
+        return notifications
     }
 
     protected createLoginPayload(): void {
@@ -278,8 +337,16 @@ export class WeverseClient {
         }
     }
 
-    protected handleResponse(response: AxiosResponse, url: string): boolean {
+    protected async handleResponse(response: AxiosResponse, url: string): Promise<boolean> {
         if (response.status === 200) return true
+        if (response.status === 401) {
+            const refresh = await this.checkLogin()
+            if (!refresh) {
+                this.log('Weverse: failed to refresh token')
+                return false
+            }
+            return true
+        }
         this.log(`Weverse: API error @ ${url}. Status code ${response.status}`)
         return false
     }

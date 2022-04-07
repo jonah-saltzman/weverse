@@ -19,9 +19,15 @@ export class ClientNotifications {
     public get(id: number): WeverseNotification | undefined {
         return this.allMap.get(id)
     }
-    public addMany(notifications: WeverseNotification[]): void {
-        this.all.push(...notifications)
-        this.new = notifications
-        notifications.forEach(n => this.allMap.set(n.id, n))
+    public addMany(notifications: WeverseNotification[]): WeverseNotification[] {
+        this.new = []
+        notifications.forEach(n => {
+            if (!this.allMap.has(n.id)) {
+                this.all.push(n)
+                this.allMap.set(n.id, n)
+                this.new.push(n)
+            }
+        })
+        return this.new
     }
 }
