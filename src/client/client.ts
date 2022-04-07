@@ -261,7 +261,7 @@ export class WeverseClient {
         return posts
     }
 
-    public async getNotifications(pages?: number): Promise<WeverseNotification[] | null> {
+    public async getNotifications(pages?: number, process?: boolean): Promise<WeverseNotification[] | null> {
         if (pages === undefined) pages = 1
         if (pages <= -1) return null
         if (pages === 0) pages = Infinity
@@ -294,43 +294,25 @@ export class WeverseClient {
                 count++
             } else {
                 this.log('Weverse: failed to get notifications after ' + count + ' pages')
-                return notifications
+                break
             }
         }
-        return notifications
+        console.log('processing notifications:')
+        if (process) {
+            await Promise.all(notifications.map(async n => {
+                await this.processNotification(n)
+            }))
+            return notifications
+        } else {
+            return notifications
+        }
     }
 
     public async getNewNotifications(): Promise<WeverseNotification[] | null> {
         if (!await this.checkLogin()) return null
         const newNotifications = await this.getNotifications(1)
         if (newNotifications) {
-            newNotifications.forEach(async n => {
-                let k: keyof typeof NotifContent
-                for (k in NotifContent) {
-                    if (NotifContent[k].some(str => n.message.includes(str))) {
-                        n.type = k
-                        break
-                    }
-                }
-                switch (n.type) {
-                    case NotifKeys.COMMENT:
-                        const artist = this._artistMap.get(n.artistId ?? -1)
-                        let post = await this.getPost(n.contentsId, n.community.id)
-                        if (!post || !artist) break
-                        await this.getComments(post, post.community)
-                        break
-                    case NotifKeys.POST:
-                        await this.getPost(n.contentsId, n.community.id)
-                        break
-                    case NotifKeys.MEDIA:
-                        await this.getMedia(n.contentsId, n.community)
-                        break
-                    case NotifKeys.ANNOUNCEMENT:
-                        break
-                    default:
-                        this.log('Weverse: unknown notification type: ' + n)
-                }
-            })
+            await Promise.all(newNotifications.map(this.processNotification))
             return newNotifications
         }
         return null
@@ -399,6 +381,39 @@ export class WeverseClient {
             }
         }
         return null
+    }
+
+    public async processNotification(n: WeverseNotification): Promise<void> {
+        this.log('processing notification: ')
+        let k: keyof typeof NotifContent
+        for (k in NotifContent) {
+            if (NotifContent[k].some(str => n.message.includes(str))) {
+                n.type = k
+                break
+            }
+        }
+        try {
+            switch (n.type) {
+                case NotifKeys.COMMENT:
+                    const artist = this._artistMap.get(n.artistId ?? -1)
+                    const post = await this.getPost(n.contentsId, n.community.id)
+                    if (!post || !artist) break
+                    await this.getComments(post, post.community)
+                    break
+                case NotifKeys.POST:
+                    await this.getPost(n.contentsId, n.community.id)
+                    break
+                case NotifKeys.MEDIA:
+                    await this.getMedia(n.contentsId, n.community)
+                    break
+                case NotifKeys.ANNOUNCEMENT:
+                    break
+                default:
+                    this.log('Weverse: unknown notification type: ' + n)
+            }
+        } catch (e) {
+            this.log(`failed to process notification ${n.id}`)
+        }
     }
 
     protected createLoginPayload(): void {

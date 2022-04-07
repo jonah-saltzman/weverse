@@ -223,6 +223,7 @@ export const Photo = object({
 })
 
 export const Video = object({
+    id: optional(number),
     videoUrl: url,
     thumbnailUrl: url,
     thumbnailWidth: number,
