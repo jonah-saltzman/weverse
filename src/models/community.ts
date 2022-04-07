@@ -1,6 +1,7 @@
 import { WeverseArtist, WeverseTab, WeversePost } from "."
 import { Community, Photo, Video } from "../types"
 import { AssignType } from "../client"
+import { WeverseMedia } from "./media"
 
 export class WeverseCommunity extends AssignType<Community>() {
     newPosts: WeversePost[]
@@ -12,13 +13,17 @@ export class WeverseCommunity extends AssignType<Community>() {
     postsMap: Map<number, WeversePost> = new Map<number, WeversePost>()
     photos: Photo[] = []
     videos: Video[] = []
-    constructor(props: Community) {
+    media: WeverseMedia[]
+    mediaMap: Map<number, WeverseMedia>
+    constructor(props: Community, test?: undefined) {
         super(props)
         this.artists = []
         this.artistMap = new Map<number, WeverseArtist>()
         this.tabs = []
         this.tabMap = new Map<number, WeverseTab>()
         this.newPosts = []
+        this.media = []
+        this.mediaMap = new Map<number, WeverseMedia>()
     }
     public toString() {
         return this.name
@@ -65,6 +70,21 @@ export class WeverseCommunity extends AssignType<Community>() {
         return newVideos
     }
 
+    public addMedia(media: WeverseMedia[]) {
+        const added: WeverseMedia[] = []
+        media.forEach(m => {
+            if (!this.mediaMap.has(m.id)) {
+                this.media.unshift(m)
+                this.mediaMap.set(m.id, m)
+                added.push(m)
+            }
+        })
+        return added
+    }
+
+    public get mediaArray() {
+        return this.media
+    }
 
     public getArtist(id: number): WeverseArtist | undefined {
         return this.artistMap.get(id)

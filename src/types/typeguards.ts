@@ -19,6 +19,12 @@ const string: TypeGuard<string> = (val: unknown) => {
     return val
 }
 
+const mediaType: TypeGuard<MediaTypes> = (val: unknown) => {
+    if (typeof val !== 'string') throw new Error()
+    if (val === 'VIDEO' || val === 'PHOTO') return val
+    throw new Error()
+}
+
 const optionalString: TypeGuard<string | undefined> = (val: unknown) => {
     if (val === undefined || typeof val === 'string') return val
     throw new Error()
@@ -50,9 +56,15 @@ const toNum: TypeConverter<string, number> = (val: string) => {
     return Number(val)
 }
 
-const date: TypeConverter<string, Date> = (val: unknown) => {
+const date: TypeConverter<string, Date> = (val: unknown): Date => {
     if (typeof val !== 'string') throw new Error()
     return new Date(val)
+}
+
+const optionalUrl: TypeConverter<any, URL | undefined> = (val: unknown): URL | undefined => {
+    if (typeof val === 'undefined') return undefined
+    if (typeof val === 'string') return new URL(val)
+    throw new Error()
 }
 
 const optionalDate: TypeConverter<string | undefined, Date | undefined> = (val: unknown) => {
@@ -82,11 +94,6 @@ const optional = <T>(inner: TypeGuard<T>) => (val: unknown): T | undefined => {
     if (val === undefined) return undefined
     return inner(val)
 }
-
-// const optionalConverter = <T, U>(inner: TypeConverter<T, U>) => (val: unknown): U | undefined => {
-//     if (val === undefined) return undefined
-//     return inner(val)
-// }
 
 const object = <T extends Record<string, TypeGuard<any> | TypeConverter<any, any>>>(inner: T) => {
     return (val: unknown): { [P in keyof T]: ReturnType<T[P]> } => {
@@ -147,7 +154,8 @@ export enum NotificationType {
     FANS = 'TO_FANS',
     POST = 'ARTIST_POST',
     FAN_REPLY = 'COMMENT_DETAIL',
-    NOTICE = 'NOTICE'
+    NOTICE = 'NOTICE',
+    O_POST = 'POST'
 }
 
 type NotifType = NotificationType
@@ -251,7 +259,7 @@ export const Post = object({
     id: number,
     communityUser: artistInfo,
     communityTabId: number,
-    body: string,
+    body: optional(string),
     artistComments: array(Comment),
     commentCount: number,
     likeCount: number,
@@ -279,6 +287,29 @@ export const isComment = (c: WeverseComment | undefined): c is WeverseComment =>
     return !!c
 }
 
+export const Media = object({
+    id: number,
+    communityId: number,
+    body: string,
+    type: mediaType,
+    thumbnailPath: url,
+    title: string,
+    extVideoPath: optionalUrl,
+    youtubeId: optional(string),
+    likeCount: number,
+    playCount: number,
+    commentCount: number,
+    createdAt: date,
+    updatedAt: date,
+    photos: array(Photo)
+})
+
+export const MediaArray = array(Media)
+export type Media = ReturnType<typeof Media>
+export type MediaArray = Media[]
+
+export type MediaTypes = 'PHOTO' | 'VIDEO'
+
 export type NotifContentKeys = 'COMMENT' | 'POST' | 'MEDIA' | 'ANNOUNCEMENT'
 export type NotifContentType = {
     [key in NotifContentKeys]: string[]
@@ -288,7 +319,7 @@ export type Comment = ReturnType<typeof Comment>
 export type CommentArray = Comment[]
 
 export const NotifContent: NotifContentType = {
-    COMMENT: ["commented on", "replied to", "포스트에 댓글을 작성했습니다", "답글을 작성했습니다."],
+    COMMENT: ["commented on", "포스트에 댓글을 작성했습니다", "답글을 작성했습니다."], // "replied to"
     POST: [
         "님이 포스트를 작성했습니다", "created a new post!", "shared a moment with you", "모먼트가 도착했습니다"
     ],

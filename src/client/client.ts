@@ -13,11 +13,14 @@ import {
     Notification, isNotification, 
     PostArray, Post, WvHeaders,
     isPost, NotifContent, NotifKeys, 
-    CommentArray, Comment, isComment, Photo, Video } from "../types"
+    CommentArray, Comment, isComment, 
+    Photo, Video, Media } from "../types"
 
 import { 
     WeverseUrl as urls,
-    validateStatus, toCommunity, toArtist, toNotification, toPost, toComment } from "."
+    validateStatus, toCommunity, 
+    toArtist, toNotification, 
+    toPost, toComment, toMedia } from "."
 
 import axios, { AxiosResponse } from 'axios'
 
@@ -28,9 +31,11 @@ import {
 
 import { WeverseArtist, WeverseCommunity, 
     WeverseNotification, ClientNotifications, 
-    WeversePost, WeverseComment } from "../models"
+    WeversePost, WeverseComment, WeverseMedia } from "../models"
 
-export class WeverseClient {
+import { EventEmitter } from "events"
+
+export class WeverseClient extends EventEmitter {
 
     protected _verbose: boolean
     protected _authorization: WeversePasswordAuthorization | WeverseTokenAuthorization
@@ -49,8 +54,10 @@ export class WeverseClient {
     public posts: WeversePost[] = []
     protected _postsMap: Map<number, WeversePost> = new Map<number, WeversePost>()
     protected _commentsMap: Map<number, WeverseComment> = new Map<number, WeverseComment>()
+    //public events = new EventEmitter()
 
     constructor(authorization: WeverseAuthorization, verbose?: boolean) {
+        super()
         if (authorization === undefined) throw 'Must instantiate with Weverse token or login'
         verbose = verbose ?? false
         this._authorized = false
@@ -74,7 +81,7 @@ export class WeverseClient {
             this.log('Weverse: communities initialized')
             await Promise.all(this.communities.map((c: WeverseCommunity) => this.getCommunityArtists(c, {init: true})))
             this.log('Weverse: artists initialized')
-            await this.getNotifications(options?.allNotifications ? 0 : 1)
+            await this.getNotifications(options?.allNotifications ? 0 : 1, true)
             this.log('Weverse: notifications retreived')
             await Promise.all(
                 this.communities.map((c: WeverseCommunity) => 
@@ -82,9 +89,11 @@ export class WeverseClient {
                 )
             )
             this.log('Weverse: posts retreived')
+            this.emit('ready', true)
         } catch(e) {
             console.log('Weverse: initialization failed')
             console.log(e)
+            this.emit('ready', false)
         }
     }
 
@@ -268,7 +277,7 @@ export class WeverseClient {
         let count = 0
         let from = 0
         const notifications: WeverseNotification[] = []
-        while (count <= pages) {
+        while (count < pages) {
             const response = await axios.get(urls.notifications(from), { headers: this._headers })
             const { data } = response
             if (await this.handleResponse(response, urls.notifications(from))) {
@@ -281,7 +290,13 @@ export class WeverseClient {
                         this.log(n)
                         return
                     } else {
-                        return toNotification(n, community, artist)
+                        try {
+                            return toNotification(n, community, artist)
+                        } catch (e) {
+                            this.log('malformed notification:')
+                            this.log(n)
+                            return
+                        }
                     }
                 }).filter(isNotification)
                 notifications.push(...this.notifications.addMany(n))
@@ -297,7 +312,6 @@ export class WeverseClient {
                 break
             }
         }
-        console.log('processing notifications:')
         if (process) {
             await Promise.all(notifications.map(async n => {
                 await this.processNotification(n)
@@ -318,24 +332,13 @@ export class WeverseClient {
         return null
     }
 
-    public async getMedia(id: number, community: WeverseCommunity): Promise<Photo[] | Video | null> {
-        const response = await axios.get(urls.media(community.id, id), { headers: this._headers })
+    public async getMedia(id: number, community: WeverseCommunity): Promise<WeverseMedia[] | null> {
+        const response = await axios.get(urls.media(community.id, id), { headers: this._headers, validateStatus })
         if (await this.handleResponse(response, urls.media(community.id, id))) {
             const data = response.data
             if (data.media) {
-                if (data.media.photos.length > 0){
-                    const photos: Photo[] = []
-                    for (const p of data.media.photos) {
-                        photos.push(Photo(p))
-                    }
-                    community.addPhotos(photos)
-                    return photos
-                }
-                if (data.media.type === 'VIDEO') {
-                    const video = Video(data.media)
-                    community.addVideos([video])
-                    return video
-                }
+                const media = toMedia(data.media, community)
+                return community.addMedia([media])
             }
         }
         return null
@@ -384,7 +387,6 @@ export class WeverseClient {
     }
 
     public async processNotification(n: WeverseNotification): Promise<void> {
-        this.log('processing notification: ')
         let k: keyof typeof NotifContent
         for (k in NotifContent) {
             if (NotifContent[k].some(str => n.message.includes(str))) {
@@ -412,7 +414,7 @@ export class WeverseClient {
                     this.log('Weverse: unknown notification type: ' + n)
             }
         } catch (e) {
-            this.log(`failed to process notification ${n.id}`)
+            this.log(`failed to process notification ${n.id}: ${n.type}`)
         }
     }
 
