@@ -1,10 +1,11 @@
 import { AssignType } from "../client"
-import { Notification } from "../types"
+import { NotifContentKeys, Notification } from "../types"
 import { WeverseCommunity, WeverseArtist } from "."
 
 export class WeverseNotification extends AssignType<Notification>() {
     community: WeverseCommunity
     artist?: WeverseArtist
+    type?: NotifContentKeys
     constructor(props: Notification, community: WeverseCommunity, artist?: WeverseArtist) {
         super(props)
         this.artist = artist ?? undefined

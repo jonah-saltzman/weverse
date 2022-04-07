@@ -2,10 +2,12 @@ import { AssignType, WeverseUrl as urls } from "../client";
 import { Post, WvHeaders } from "../types";
 import { WeverseCommunity, WeverseArtist } from ".";
 import axios from 'axios'
+import { WeverseComment } from "./comment";
 
 export class WeversePost extends AssignType<Post>() {
     artist: WeverseArtist
     community: WeverseCommunity
+    comments: WeverseComment[] = []
     constructor(props: Post, community: WeverseCommunity, artist: WeverseArtist) {
         super(props)
         this.artist = artist
@@ -24,5 +26,9 @@ export class WeversePost extends AssignType<Post>() {
         } else {
             return
         }
+    }
+
+    public addComments(comments: WeverseComment[]) {
+        this.comments = comments.filter(c => !this.comments.some(c2 => c2.id === c.id)).concat(this.comments)
     }
 }

@@ -12,11 +12,12 @@ import {
     GetOptions, NotificationArray, 
     Notification, isNotification, 
     PostArray, Post, WvHeaders,
-    isPost } from "../types"
+    isPost, NotifContent, NotifKeys, 
+    CommentArray, Comment, isComment, Photo, Video } from "../types"
 
 import { 
     WeverseUrl as urls,
-    validateStatus, toCommunity, toArtist, toNotification, toPost } from "."
+    validateStatus, toCommunity, toArtist, toNotification, toPost, toComment } from "."
 
 import axios, { AxiosResponse } from 'axios'
 
@@ -27,7 +28,7 @@ import {
 
 import { WeverseArtist, WeverseCommunity, 
     WeverseNotification, ClientNotifications, 
-    WeversePost } from "../models"
+    WeversePost, WeverseComment } from "../models"
 
 export class WeverseClient {
 
@@ -47,6 +48,7 @@ export class WeverseClient {
     public notifications = new ClientNotifications()
     public posts: WeversePost[] = []
     protected _postsMap: Map<number, WeversePost> = new Map<number, WeversePost>()
+    protected _commentsMap: Map<number, WeverseComment> = new Map<number, WeverseComment>()
 
     constructor(authorization: WeverseAuthorization, verbose?: boolean) {
         if (authorization === undefined) throw 'Must instantiate with Weverse token or login'
@@ -298,6 +300,107 @@ export class WeverseClient {
         return notifications
     }
 
+    public async getNewNotifications(): Promise<WeverseNotification[] | null> {
+        if (!await this.checkLogin()) return null
+        const newNotifications = await this.getNotifications(1)
+        if (newNotifications) {
+            newNotifications.forEach(async n => {
+                let k: keyof typeof NotifContent
+                for (k in NotifContent) {
+                    if (NotifContent[k].some(str => n.message.includes(str))) {
+                        n.type = k
+                        break
+                    }
+                }
+                switch (n.type) {
+                    case NotifKeys.COMMENT:
+                        const artist = this._artistMap.get(n.artistId ?? -1)
+                        let post = await this.getPost(n.contentsId, n.community.id)
+                        if (!post || !artist) break
+                        await this.getComments(post, post.community)
+                        break
+                    case NotifKeys.POST:
+                        await this.getPost(n.contentsId, n.community.id)
+                        break
+                    case NotifKeys.MEDIA:
+                        await this.getMedia(n.contentsId, n.community)
+                        break
+                    case NotifKeys.ANNOUNCEMENT:
+                        break
+                    default:
+                        this.log('Weverse: unknown notification type: ' + n)
+                }
+            })
+            return newNotifications
+        }
+        return null
+    }
+
+    public async getMedia(id: number, community: WeverseCommunity): Promise<Photo[] | Video | null> {
+        const response = await axios.get(urls.media(community.id, id), { headers: this._headers })
+        if (await this.handleResponse(response, urls.media(community.id, id))) {
+            const data = response.data
+            if (data.media) {
+                if (data.media.photos.length > 0){
+                    const photos: Photo[] = []
+                    for (const p of data.media.photos) {
+                        photos.push(Photo(p))
+                    }
+                    community.addPhotos(photos)
+                    return photos
+                }
+                if (data.media.type === 'VIDEO') {
+                    const video = Video(data.media)
+                    community.addVideos([video])
+                    return video
+                }
+            }
+        }
+        return null
+    }
+
+    public async getComments(p: WeversePost, c: WeverseCommunity): Promise<WeverseComment[] | null> {
+        const response = await axios.get(urls.postComments(p.id, c.id), { headers: this._headers })
+        if (await this.handleResponse(response, urls.postComments(p.id, c.id))) {
+            const data = response.data
+            if (data.artistComments) {
+                const comments = CommentArray(data.artistComments).map((c: Comment) => {
+                    const artist = this._artistMap.get(c.communityUser.artistId)
+                    if (!artist) return
+                    return toComment(c, p, artist)
+                }).filter(isComment)
+                p.addComments(comments)
+                comments.forEach((c: WeverseComment) => {
+                    this._commentsMap.set(c.id, c)
+                })
+                return comments
+            }
+        }
+        return null
+    }
+
+    public async getPost(id: number, communityId: number): Promise<WeversePost | null> {
+        const saved = this._postsMap.get(id)
+        if (saved) return saved
+        const response = await axios.get(urls.postDetails(id, communityId), { headers: this._headers })
+        if (await this.handleResponse(response, urls.postDetails(id, communityId))) {
+            const data = response.data
+            if (data.post) {
+                const community = this._communityMap.get(communityId)
+                const artist = this._artistMap.get(data.post.artistId)
+                if (!community || !artist) return null
+                const post = toPost(data.post, community, artist)
+                this.posts.push(post)
+                this._postsMap.set(post.id, post)
+                community.addPosts([post])
+                return post
+            } else {
+                return null
+            }
+        }
+        return null
+    }
+
     protected createLoginPayload(): void {
         try {
             let payload: WeverseLoginPayloadInterface | null = null
@@ -357,6 +460,10 @@ export class WeverseClient {
 
     public communityById(id: number): WeverseCommunity | null {
         return this._communityMap.get(id) ?? null
+    }
+
+    public post(id: number): WeversePost | null {
+        return this._postsMap.get(id) ?? null
     }
 
     public get authorized(): boolean {

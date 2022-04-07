@@ -75,7 +75,19 @@ export class WeverseUrl {
 
     public static postDetails(postId: number, communityId: number): string {
         const url = new URL(WeverseUrl.community(communityId))
-        url.pathname += 'posts/' + postId.toString()
+        url.pathname += 'posts/' + postId.toString() + '/'
+        return url.toString()
+    }
+
+    public static postComments(postId: number, communityId: number): string {
+        const url = new URL(WeverseUrl.postDetails(postId, communityId))
+        url.pathname += 'comments/'
+        return url.toString()
+    }
+
+    public static media(communityId: number, mediaId: number): string {
+        const url = new URL(WeverseUrl.community(communityId))
+        url.pathname += 'medias/' + mediaId.toString() + '/'
         return url.toString()
     }
 }

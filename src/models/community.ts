@@ -1,5 +1,5 @@
 import { WeverseArtist, WeverseTab, WeversePost } from "."
-import { Community } from "../types"
+import { Community, Photo, Video } from "../types"
 import { AssignType } from "../client"
 
 export class WeverseCommunity extends AssignType<Community>() {
@@ -10,6 +10,8 @@ export class WeverseCommunity extends AssignType<Community>() {
     tabMap: Map<number, WeverseTab>
     posts: WeversePost[] = []
     postsMap: Map<number, WeversePost> = new Map<number, WeversePost>()
+    photos: Photo[] = []
+    videos: Video[] = []
     constructor(props: Community) {
         super(props)
         this.artists = []
@@ -33,13 +35,36 @@ export class WeverseCommunity extends AssignType<Community>() {
         this.newPosts = []
         posts.forEach(p => {
             if (!this.postsMap.has(p.id)) {
-                this.posts.push(p)
+                this.posts.unshift(p)
                 this.postsMap.set(p.id, p)
                 this.newPosts.push(p)
             }
         })
         return this.newPosts
     }
+
+    public addPhotos(photos: Photo[]) {
+        const newPhotos: Photo[] = []
+        for (const photo of photos) {
+            if (!this.photos.find(p => p.id === photo.id)) {
+                this.photos.unshift(photo)
+                newPhotos.unshift(photo)
+            }
+        }
+        return newPhotos
+    }
+
+    public addVideos(videos: Video[]) {
+        const newVideos: Video[] = []
+        for (const video of videos) {
+            if (!this.videos.find(p => p.thumbnailUrl === video.thumbnailUrl)) {
+                this.videos.unshift(video)
+                newVideos.unshift(video)
+            }
+        }
+        return newVideos
+    }
+
 
     public getArtist(id: number): WeverseArtist | undefined {
         return this.artistMap.get(id)

@@ -1,5 +1,5 @@
 import { WeverseOauthCredentials } from "."
-import { WeverseNotification, WeversePost } from "../models"
+import { WeverseComment, WeverseNotification, WeversePost } from "../models"
 
 export const isWeverseLogin = (res: any): res is WeverseOauthCredentials => {
     //console.log(res)
@@ -205,6 +205,7 @@ export const isNotification = (n: WeverseNotification | undefined): n is Weverse
 }
 
 export const Photo = object({
+    mediaId: optional(number),
     postId: number,
     imgUrl: url,
     imgWidth: number,
@@ -222,7 +223,6 @@ export const Photo = object({
 })
 
 export const Video = object({
-    //id: number,
     videoUrl: url,
     thumbnailUrl: url,
     thumbnailWidth: number,
@@ -264,17 +264,40 @@ export const PostArray = array(Post)
 export type Post = ReturnType<typeof Post>
 export type PostArray = Post[]
 
+export const PhotoArray = array(Photo)
+export type Photo = ReturnType<typeof Photo>
+export type PhotoArray = Photo[]
+
+export type Video = ReturnType<typeof Video>
+
 export const isPost = (n: WeversePost | undefined): n is WeversePost => {
     return !!n
 }
-// {
-//     communityId: 14,
-//     isEnabled: true,
-//     hasNewToFans: false,
-//     hasNewPrivateToFans: false,
-//     toFanLastId: 1687778027996520,
-//     toFanLastCreatedAt: '2022-03-26T00:05:30+09:00',
-//     toFanLastExpireIn: 0,
-//     nameI18n: "[I18nElement{languageCode='en', value='JI U'}, I18nElement{languageCode='ja', value='ジユ'}]",
-//     birthdayImgUrl: 'https://cdn-contents-web.weverse.io/admin/82f3bc8484424bb09959927e1160a2e2983.png'
-//   },
+
+export const isComment = (c: WeverseComment | undefined): c is WeverseComment => {
+    return !!c
+}
+
+export type NotifContentKeys = 'COMMENT' | 'POST' | 'MEDIA' | 'ANNOUNCEMENT'
+export type NotifContentType = {
+    [key in NotifContentKeys]: string[]
+}
+export const CommentArray = array(Comment)
+export type Comment = ReturnType<typeof Comment>
+export type CommentArray = Comment[]
+
+export const NotifContent: NotifContentType = {
+    COMMENT: ["commented on", "replied to", "포스트에 댓글을 작성했습니다", "답글을 작성했습니다."],
+    POST: [
+        "님이 포스트를 작성했습니다", "created a new post!", "shared a moment with you", "모먼트가 도착했습니다"
+    ],
+    MEDIA: ["Check out the new media", "새로운 미디어"],
+    ANNOUNCEMENT: ["New announcement", "NOTICE:", "(광고)", "(AD)"]
+}
+
+export enum NotifKeys {
+    COMMENT = 'COMMENT',
+    POST = 'POST',
+    MEDIA = 'MEDIA',
+    ANNOUNCEMENT = 'ANNOUNCEMENT'
+}
