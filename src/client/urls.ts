@@ -49,7 +49,19 @@ export class WeverseUrl {
 
     public static community(id: number): string {
         const url = new URL(WeverseUrl._communities.toString())
-        url.pathname += id.toString()
+        url.pathname += (id.toString() + '/')
+        return url.toString()
+    }
+
+    public static communityPosts(id: number): string {
+        const url = new URL(WeverseUrl.community(id))
+        url.pathname += 'posts/artistTab/'
+        return url.toString()
+    }
+
+    public static postDetails(postId: number, communityId: number): string {
+        const url = new URL(WeverseUrl.community(communityId))
+        url.pathname += 'posts/' + postId.toString()
         return url.toString()
     }
 }

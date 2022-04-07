@@ -1,5 +1,5 @@
 import { WeverseOauthCredentials } from "."
-import { WeverseNotification } from "../models"
+import { WeverseNotification, WeversePost } from "../models"
 
 export const isWeverseLogin = (res: any): res is WeverseOauthCredentials => {
     //console.log(res)
@@ -40,6 +40,7 @@ const optionalNumber: TypeGuard<number | undefined> = (val: unknown) => {
 }
 
 const url: TypeConverter<string, URL> = (val: unknown) => {
+    if (val === undefined) return new URL('https://PLACEHOLDER.weverse.com')
     if (typeof val !== 'string') throw new Error()
     return new URL(val)
 }
@@ -202,6 +203,56 @@ export const isNotification = (n: WeverseNotification | undefined): n is Weverse
     return !!n
 }
 
+export const Photo = object({
+    postId: number,
+    imgUrl: url,
+    imgWidth: number,
+    imgHeight: number,
+    id: number,
+    contentIndex: number,
+    thumbnailImgUrl: url,
+    thumbnailImgWidth: number,
+    thumbnailImgHeight: number,
+    orgImgUrl: url,
+    orgImgWidth: number,
+    orgImgHeight: number,
+    downloadImgFilename: string,
+    isGif: boolean
+})
+
+export const Video = object({
+    //id: number,
+    videoUrl: url,
+    thumbnailUrl: url,
+    thumbnailWidth: number,
+    thumbnailHeight: number,
+    playTime: number
+})
+
+export const Post = object({
+    id: number,
+    communityUser: object({
+        artistId: number,
+        communityId: number,
+    }),
+    communityTabId: number,
+    body: string,
+    // artistComments
+    commentCount: number,
+    likeCount: number,
+    createdAt: date,
+    updatedAt: date,
+    photos: optional(array(Photo)),
+    attachedVideos: optional(array(Video)),
+})
+
+export const PostArray = array(Post)
+export type Post = ReturnType<typeof Post>
+export type PostArray = Post[]
+
+export const isPost = (n: WeversePost | undefined): n is WeversePost => {
+    return !!n
+}
 // {
 //     communityId: 14,
 //     isEnabled: true,

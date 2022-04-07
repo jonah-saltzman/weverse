@@ -37,11 +37,13 @@ export type WeverseOauthCredentials = {
 }
 
 export interface WeverseInitOptions {
-    oldPosts?: boolean
-    notifications?: boolean
+    allPosts?: boolean
+    allNotifications?: boolean
     media?: boolean
 }
 
 export interface GetOptions {
     init: boolean
 }
+
+export type WvHeaders = {[key: string]: string} | undefined

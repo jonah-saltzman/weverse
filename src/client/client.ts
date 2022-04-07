@@ -9,11 +9,14 @@ import {
     WeverseInitOptions,
     Community, CommunityArray,
     Artist, ArtistArray, 
-    GetOptions, NotificationArray, Notification, isNotification } from "../types"
+    GetOptions, NotificationArray, 
+    Notification, isNotification, 
+    PostArray, Post, WvHeaders,
+    isPost } from "../types"
 
 import { 
     WeverseUrl as urls,
-    validateStatus } from "."
+    validateStatus, toCommunity, toArtist, toNotification, toPost } from "."
 
 import axios, { AxiosResponse } from 'axios'
 
@@ -22,9 +25,9 @@ import {
     createLoginPayload,
     createRefreshPayload } from "./helpers"
 
-import { WeverseArtist, WeverseCommunity, WeverseNotification, ClientNotifications } from "../models"
-
-import { toCommunity, toArtist, toNotification } from "./apiconverters"
+import { WeverseArtist, WeverseCommunity, 
+    WeverseNotification, ClientNotifications, 
+    WeversePost } from "../models"
 
 export class WeverseClient {
 
@@ -36,12 +39,14 @@ export class WeverseClient {
     protected _credentials: WeverseOauthCredentials | null
     protected _refreshToken?: string
     protected _weverseId?: number
-    protected _headers: {[key: string]: string} | undefined
+    protected _headers: WvHeaders
     public communities: WeverseCommunity[] = []
     protected _communityMap: Map<number, WeverseCommunity> = new Map<number, WeverseCommunity>()
     public artists: WeverseArtist[] = []
     protected _artistMap: Map<number, WeverseArtist> = new Map<number, WeverseArtist>()
     public notifications = new ClientNotifications()
+    public posts: WeversePost[] = []
+    protected _postsMap: Map<number, WeversePost> = new Map<number, WeversePost>()
 
     constructor(authorization: WeverseAuthorization, verbose?: boolean) {
         if (authorization === undefined) throw 'Must instantiate with Weverse token or login'
@@ -63,11 +68,15 @@ export class WeverseClient {
         try {
             if (!await this.checkLogin()) return
             await this.getCommunities({init: true})
-            if (this.communities) {
-                this.log('Weverse: communities initialized')
-                await Promise.all(this.communities.map((c: WeverseCommunity) => this.getCommunityArtists(c, {init: true})))
-                this.log('Weverse: artists initialized')
-                await this.getRecentNotifications()
+            if (!this.communities) throw 'error'
+            this.log('Weverse: communities initialized')
+            await Promise.all(this.communities.map((c: WeverseCommunity) => this.getCommunityArtists(c, {init: true})))
+            this.log('Weverse: artists initialized')
+            await this.getRecentNotifications()
+            this.log('Weverse: recent notifications retreived')
+            if (options?.allPosts) {
+                await Promise.all(this.communities.map((c: WeverseCommunity) => this.getCommunityPosts(c, {init: true})))
+                this.log('Weverse: all posts retreived')
             }
         } catch(e) {
             console.log('Weverse: initialization failed')
@@ -190,14 +199,42 @@ export class WeverseClient {
                 const artist = this._artistMap.get(n.artistId ?? -1)
                 const community = this._communityMap.get(n.communityId)
                 if (!community) {
-                    this.log('Weverse: failed to find community for notification')
-                    console.log(n)
-                    throw new Error()
+                    this.log('Weverse: failed to find community for notification:')
+                    this.log(n)
+                    return
                 } else {
                     return toNotification(n, community, artist)
                 }
             }).filter(isNotification)
             this.notifications.addMany(notifications)
+            return notifications
+        }
+        return null
+    }
+
+    public async getCommunityPosts(c: WeverseCommunity, opts?: GetOptions): Promise<WeversePost[] | null> {
+        if (!opts || !opts.init) {
+            if (!await this.checkLogin()) return null
+        }
+        const response = await axios.get(urls.communityPosts(c.id), { headers: this._headers })
+        if (this.handleResponse(response, urls.communityPosts(c.id))) {
+            const posts = PostArray(response.data.posts).map((p: Post) => {
+                const artist = this._artistMap.get(p.communityUser.artistId)
+                if (!artist) {
+                    this.log('Weverse: failed to find artist for post:')
+                    this.log(p)
+                    return
+                } else {
+                    return toPost(p, c, artist)
+                }
+            }).filter(isPost)
+            c.addPosts(posts)
+            this.posts.push(...posts)
+            posts.forEach((p: WeversePost) => {
+                this._postsMap.set(p.id, p)
+            })
+            await Promise.all(posts.map(async (p: WeversePost) => p.getVideoUrls(this._headers)))
+            return posts
         }
         return null
     }
@@ -249,6 +286,10 @@ export class WeverseClient {
 
     protected log(...vals: any): void {
         if (this.verbose) console.log(...vals)
+    }
+
+    public communityById(id: number): WeverseCommunity | null {
+        return this._communityMap.get(id) ?? null
     }
 
     public get authorized(): boolean {

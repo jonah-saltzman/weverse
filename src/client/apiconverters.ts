@@ -1,5 +1,5 @@
-import { WeverseTab, WeverseCommunity, WeverseArtist, WeverseNotification } from "../models";
-import { WeverseTabProps, Community, Artist, Notification } from "../types";
+import { WeverseTab, WeverseCommunity, WeverseArtist, WeverseNotification, WeversePost } from "../models";
+import { WeverseTabProps, Community, Artist, Notification, Post } from "../types";
 
 // export function toCommunity(val: any): WeverseCommunity | null {
 //     const props: Partial<WeverseCommunityProps> = {}
@@ -53,6 +53,10 @@ export function toArtist(val: Artist, community: WeverseCommunity): WeverseArtis
 
 export function toNotification(val: Notification, community: WeverseCommunity, artist?: WeverseArtist,): WeverseNotification {
     return new WeverseNotification(val, community, artist)
+}
+
+export function toPost(val: Post, community: WeverseCommunity, artist: WeverseArtist): WeversePost {
+    return new WeversePost(val, community, artist)
 }
 
 // convert api data to WeverseArtistProps
