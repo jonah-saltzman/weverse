@@ -1,20 +1,18 @@
 import { 
     WeverseAuthorization,
-    WeverseClientSettings,
     WeverseOauthCredentials,
     WeversePasswordAuthorization,
     WeverseTokenAuthorization,
     isWeverseLogin, 
     WeverseLoginPayloadInterface,
     WeverseInitOptions,
-    Community, CommunityArray,
-    Artist, ArtistArray, 
-    GetOptions, NotificationArray, 
-    Notification, isNotification, 
-    PostArray, Post, WvHeaders,
-    isPost, NotifContent, NotifKeys, 
-    CommentArray, Comment, isComment, 
-    Photo, Video, Media } from "../types"
+    CommunityArray, Artist, 
+    ArtistArray, GetOptions, 
+    NotificationArray, Notification, 
+    isNotification, PostArray, 
+    Post, WvHeaders, isPost, 
+    NotifContent, NotifKeys, 
+    CommentArray, Comment, isComment } from "../types"
 
 import { 
     WeverseUrl as urls,
@@ -31,7 +29,8 @@ import {
 
 import { WeverseArtist, WeverseCommunity, 
     WeverseNotification, ClientNotifications, 
-    WeversePost, WeverseComment, WeverseMedia, WeverseEvents } from "../models"
+    WeversePost, WeverseComment, WeverseMedia, 
+    WeverseEvents } from "../models"
 
 import EventEmitter from 'events'
 import TypedEmitter from "typed-emitter"
@@ -68,7 +67,6 @@ export class WeverseClient extends WeverseEmitter {
     public posts: WeversePost[] = []
     protected _postsMap: Map<number, WeversePost> = new Map<number, WeversePost>()
     protected _commentsMap: Map<number, WeverseComment> = new Map<number, WeverseComment>()
-    //public events = new EventEmitter()
 
     constructor(authorization: WeverseAuthorization, verbose?: boolean) {
         super()
@@ -93,7 +91,11 @@ export class WeverseClient extends WeverseEmitter {
             await this.getCommunities({init: true})
             if (!this.communities) throw 'error'
             this.log('Weverse: communities initialized')
-            await Promise.all(this.communities.map((c: WeverseCommunity) => this.getCommunityArtists(c, {init: true})))
+            await Promise.all(
+                this.communities.map((c: WeverseCommunity) => 
+                    this.getCommunityArtists(c, {init: true})
+                )
+            )
             this.log('Weverse: artists initialized')
             await this.getNotifications(options?.allNotifications ? 0 : 1, true)
             this.log('Weverse: notifications retreived')
