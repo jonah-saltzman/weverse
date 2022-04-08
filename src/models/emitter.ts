@@ -7,5 +7,7 @@ export type WeverseEvents = {
     post: (post: WeversePost) => void,
     media: (media: WeverseMedia) => void,
     comment: (comment: WeverseComment, post: WeversePost) => void
-    login: (result: boolean) => void
+    login: (result: boolean) => void,
+    poll: (status: boolean) => void
 }
+

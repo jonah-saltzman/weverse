@@ -48,3 +48,7 @@ export interface GetOptions {
 
 export type WvHeaders = {[key: string]: string} | undefined
 
+export interface ListenOptions {
+    listen: boolean,
+    interval?: number
+}

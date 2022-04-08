@@ -14,6 +14,19 @@ type TypeGuard<T> = (val: unknown) => T
 type TypeConverter<T, U> = (val: T) => U
 type OptionalConverter<T, U> = (val: T) => U | undefined
 
+const optToNum: OptionalConverter<string, number> = (val: unknown) => {
+    if (val === undefined || typeof val === 'undefined') return val
+    if (typeof val !== 'string') throw new Error()
+    return Number(val)
+}
+
+const optNotif: OptionalConverter<string, NotifType> = (val: unknown) => {
+    if (val === undefined || typeof val === 'undefined') return val
+    if (typeof val !== 'string') throw new Error()
+    if (isNotif(val)) return val as NotifType
+    throw new Error()
+}
+
 const string: TypeGuard<string> = (val: unknown) => {
     if (typeof val !== 'string') throw new Error()
     return val
@@ -40,11 +53,6 @@ const number: TypeGuard<number> = (val: unknown) => {
     return val
 }
 
-const optionalNumber: TypeGuard<number | undefined> = (val: unknown) => {
-    if (val === undefined || typeof val === 'number') return val
-    throw new Error()
-}
-
 const url: TypeConverter<string, URL> = (val: unknown) => {
     if (val === undefined) return new URL('https://PLACEHOLDER.weverse.com')
     if (typeof val !== 'string') throw new Error()
@@ -52,6 +60,7 @@ const url: TypeConverter<string, URL> = (val: unknown) => {
 }
 
 const toNum: TypeConverter<string, number> = (val: string) => {
+    console.log(`converting: `, val)
     if (typeof val !== 'string') throw new Error()
     return Number(val)
 }
@@ -95,7 +104,7 @@ const optional = <T>(inner: TypeGuard<T>) => (val: unknown): T | undefined => {
     return inner(val)
 }
 
-const object = <T extends Record<string, TypeGuard<any> | TypeConverter<any, any>>>(inner: T) => {
+const object = <T extends Record<string, OptionalConverter<any, any> | TypeGuard<any> | TypeConverter<any, any>>>(inner: T) => {
     return (val: unknown): { [P in keyof T]: ReturnType<T[P]> } => {
         if (val === null || typeof val !== 'object') throw new Error();
 
@@ -179,21 +188,17 @@ const isInfo = (val: unknown): val is Info => {
 
 type Empty = Record<any, never>
 
-export const optionalObject: TypeGuard<Info | Empty> = (val: unknown) => {
-    if (typeof val !== 'object') throw new Error()
-    if (isInfo(val)) return val
-    if (val === null) return {}
-    if (Object.keys(val).length !== 0) throw new Error()
-    return {}
-}
-
 export const Notification = object({
     id: number,
     message: string,
     boldElement: string,
     communityId: number,
     communityName: string,
-    contentsExtraInfo: optionalObject,
+    contentsExtraInfo: object({
+        replyCommentId: optToNum,
+        originContentId: optToNum,
+        originContentType: optNotif
+    }),
     contentsType: notif,
     contentsId: number,
     notifiedAt: date,
@@ -319,7 +324,7 @@ export type Comment = ReturnType<typeof Comment>
 export type CommentArray = Comment[]
 
 export const NotifContent: NotifContentType = {
-    COMMENT: ["commented on", "포스트에 댓글을 작성했습니다", "답글을 작성했습니다."], // "replied to"
+    COMMENT: ["commented on", "replied to", "포스트에 댓글을 작성했습니다", "답글을 작성했습니다."], // "replied to"
     POST: [
         "님이 포스트를 작성했습니다", "created a new post!", "shared a moment with you", "모먼트가 도착했습니다"
     ],

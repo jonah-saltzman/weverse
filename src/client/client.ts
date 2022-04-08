@@ -12,7 +12,7 @@ import {
     isNotification, PostArray, 
     Post, WvHeaders, isPost, 
     NotifContent, NotifKeys, 
-    CommentArray, Comment, isComment } from "../types"
+    CommentArray, Comment, isComment, ListenOptions } from "../types"
 
 import { 
     WeverseUrl as urls,
@@ -46,6 +46,7 @@ class WeverseEmitter extends (EventEmitter as new () => TypedEmitter<WeverseEven
     newMedia = (media: WeverseMedia) => this.emit('media', media)
     newComment = (comment: WeverseComment, post: WeversePost) => this.emit('comment', comment, post)
     loginResult = (result: boolean) => this.emit('login', result)
+    polled = (status: boolean) => this.emit('poll', status)
 }
 
 export class WeverseClient extends WeverseEmitter {
@@ -67,6 +68,7 @@ export class WeverseClient extends WeverseEmitter {
     public posts: WeversePost[] = []
     protected _postsMap: Map<number, WeversePost> = new Map<number, WeversePost>()
     protected _commentsMap: Map<number, WeverseComment> = new Map<number, WeverseComment>()
+    protected listener: ReturnType<typeof setInterval> | undefined
 
     constructor(authorization: WeverseAuthorization, verbose?: boolean) {
         super()
@@ -110,6 +112,39 @@ export class WeverseClient extends WeverseEmitter {
             console.log('Weverse: initialization failed')
             console.log(e)
             this.ready(false)
+        }
+    }
+
+    public listen(opts: ListenOptions): void {
+        if (opts.listen === false) {
+            if (this.listener) {
+                clearInterval(this.listener)
+                this.log('Weverse: stopped listener')
+            }
+        } else {
+            if (!opts.interval || opts.interval <= 0) this.log('Weverse: set a positive interval')
+            else {
+                this.listener = setInterval(this.checker, opts.interval)
+                this.log('Weverse: listening for new notifications')
+            }
+        }
+    }
+
+    protected async checker(): Promise<void> {
+        try {
+            await this.getNewNotifications()
+            this.polled(true)
+        } catch(e) {
+            if (await this.checkLogin()) {
+                this.log('Weverse: successfully reconnected')
+                this.polled(true)
+            }
+            else {
+                this.log('Weverse: failed to reconnect')
+                this.listen({listen: false})
+                this.newError(new Error('Weverse: failed to reconnect. Stopping listener.'))
+                this.polled(false)
+            }
         }
     }
 
@@ -342,7 +377,7 @@ export class WeverseClient extends WeverseEmitter {
 
     public async getNewNotifications(): Promise<WeverseNotification[] | null> {
         if (!await this.checkLogin()) return null
-        const newNotifications = await this.getNotifications(1)
+        const newNotifications = await this.getNotifications(1, false)
         if (newNotifications) {
             await Promise.all(newNotifications.map(this.processNotification))
             return newNotifications
@@ -369,6 +404,8 @@ export class WeverseClient extends WeverseEmitter {
         if (await this.handleResponse(response, urls.postComments(p.id, c.id))) {
             const data = response.data
             if (data.artistComments) {
+                this.log('got comments!')
+                this.log(data.artistComments[0])
                 const comments = CommentArray(data.artistComments).map((c: Comment) => {
                     const artist = this._artistMap.get(c.communityUser.artistId)
                     if (!artist) return
@@ -388,14 +425,20 @@ export class WeverseClient extends WeverseEmitter {
     public async getPost(id: number, communityId: number): Promise<WeversePost | null> {
         const saved = this._postsMap.get(id)
         if (saved) return saved
+        // console.log('post not saved')
+        // console.log(urls.postDetails(id, communityId))
         const response = await axios.get(urls.postDetails(id, communityId), { headers: this._headers })
+        //console.log(response.status)
         if (await this.handleResponse(response, urls.postDetails(id, communityId))) {
             const data = response.data
-            if (data.post) {
+            if (data) {
+                const artistId = data.communityUser.artistId
+                if (!artistId || typeof artistId !== 'number') return null
+                console.log(`artistId: `, artistId)
                 const community = this._communityMap.get(communityId)
-                const artist = this._artistMap.get(data.post.artistId)
+                const artist = this._artistMap.get(artistId)
                 if (!community || !artist) return null
-                const post = toPost(data.post, community, artist)
+                const post = toPost(data, community, artist)
                 this.posts.push(post)
                 this._postsMap.set(post.id, post)
                 community.addPosts([post])
@@ -419,9 +462,24 @@ export class WeverseClient extends WeverseEmitter {
         try {
             switch (n.type) {
                 case NotifKeys.COMMENT:
+                    //console.log(n.contentsExtraInfo)
                     const artist = this._artistMap.get(n.artistId ?? -1)
-                    const post = await this.getPost(n.contentsId, n.community.id)
-                    if (!post || !artist) break
+                    // console.log(`found artist: ${artist?.name}`)
+                    let id: number
+                    const replyTo = n.contentsExtraInfo?.originContentId
+                    if (typeof replyTo === 'number') {
+                        //console.log('using post id: ', replyTo)
+                        id = replyTo
+                    }
+                    else {
+                        //console.log('using contentsId: ', n.contentsId)
+                        id = n.contentsId
+                    }
+                    const post = await this.getPost(id, n.community.id)
+                    console.log(post)
+                    if (!post || !artist) throw new Error()
+                    this.log('found post:')
+                    this.log(post)
                     await this.getComments(post, post.community)
                     break
                 case NotifKeys.POST:
@@ -433,7 +491,8 @@ export class WeverseClient extends WeverseEmitter {
                 case NotifKeys.ANNOUNCEMENT:
                     break
                 default:
-                    this.log('Weverse: unknown notification type: ' + n)
+                    this.log('Weverse: unknown notification type: ')
+                    this.log(n)
             }
         } catch (e) {
             this.log(`failed to process notification ${n.id}: ${n.type}`)
