@@ -1,8 +1,12 @@
 import path from 'path'
 import fs from 'fs'
 import NodeRSA from 'node-rsa'
-import { WeverseLoginPayloadInterface, WeversePasswordAuthorization, WeverseAuthorization, WeverseTokenAuthorization, WeverseOauthCredentials, WeverseRefreshPayload, WeverseArtistProps } from '../types'
-import axios, { AxiosRequestConfig } from 'axios'
+import { WeverseLoginPayloadInterface, 
+    WeversePasswordAuthorization, 
+    WeverseAuthorization, 
+    WeverseTokenAuthorization, 
+    WeverseOauthCredentials, 
+    WeverseRefreshPayload } from '../types'
 
 export function readKey(): string | null {
     try {

@@ -37,11 +37,6 @@ const mediaType: TypeGuard<MediaTypes> = (val: unknown) => {
     throw new Error()
 }
 
-const optionalString: TypeGuard<string | undefined> = (val: unknown) => {
-    if (val === undefined || typeof val === 'string') return val
-    throw new Error()
-}
-
 const boolean: TypeGuard<boolean> = (val: unknown) => {
     if (typeof val !== 'boolean') throw new Error()
     return val
@@ -176,16 +171,14 @@ export const ExtraInfo = object({
 
 type Info = ReturnType<typeof ExtraInfo>
 
-const isInfo = (val: unknown): val is Info => {
-    try {
-        ExtraInfo(val)
-        return true
-    } catch {
-        return false
-    }
-}
-
-type Empty = Record<any, never>
+// const isInfo = (val: unknown): val is Info => {
+//     try {
+//         ExtraInfo(val)
+//         return true
+//     } catch {
+//         return false
+//     }
+// }
 
 export const Notification = object({
     id: number,
@@ -323,7 +316,7 @@ export type Comment = ReturnType<typeof Comment>
 export type CommentArray = Comment[]
 
 export const NotifContent: NotifContentType = {
-    COMMENT: ["commented on", "replied to", "포스트에 댓글을 작성했습니다", "답글을 작성했습니다."], // "replied to"
+    COMMENT: ["commented on", "replied to", "포스트에 댓글을 작성했습니다", "답글을 작성했습니다."],
     POST: [
         "님이 포스트를 작성했습니다", "created a new post!", "shared a moment with you", "모먼트가 도착했습니다"
     ],

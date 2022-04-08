@@ -33,7 +33,7 @@ import { WeverseArtist, WeverseCommunity,
     WeverseEvents } from "../models"
 
 import EventEmitter from 'events'
-import TypedEmitter from "typed-emitter"
+import TypedEmitter from 'typed-emitter'
 
 class WeverseEmitter extends (EventEmitter as new () => TypedEmitter<WeverseEvents>) {
     constructor() {
@@ -140,7 +140,7 @@ export class WeverseClient extends WeverseEmitter {
                 this.polled(true)
             }
             else {
-                this.log('Weverse: failed to reconnect')
+                this.log('Weverse: failed to reconnect. Stopping listener')
                 this.listen({listen: false})
                 this.newError(new Error('Weverse: failed to reconnect. Stopping listener.'))
                 this.polled(false)
@@ -150,17 +150,23 @@ export class WeverseClient extends WeverseEmitter {
 
     public async tryRefreshToken(): Promise<boolean> {
         if (!this._credentials) return false
-        const refreshPayload = createRefreshPayload(this._credentials)
-        const response = await axios.post(urls.login, refreshPayload, { validateStatus })
-        const credentials = response.data
-        if (isWeverseLogin(credentials)) {
-            this._credentials = credentials
-            this._headers = { Authorization: 'Bearer ' + credentials.access_token }
-            this._authorized = true
-            this._refreshToken = credentials.refresh_token
-            return true
+        try {
+            const refreshPayload = createRefreshPayload(this._credentials)
+            const response = await axios.post(urls.login, refreshPayload, { validateStatus })
+            const credentials = response.data
+            if (isWeverseLogin(credentials)) {
+                this._credentials = credentials
+                this._headers = { Authorization: 'Bearer ' + credentials.access_token }
+                this._authorized = true
+                this._refreshToken = credentials.refresh_token
+                return true
+            }
+            this.log('Weverse: token refresh rejected')
+            return false
+        } catch {
+            this.log('Weverse: error refreshing token')
+            return false
         }
-        return false
     }
     
     public async login(credentials?: WeversePasswordAuthorization): Promise<void> {
@@ -224,35 +230,47 @@ export class WeverseClient extends WeverseEmitter {
         if (!opts || !opts.init) {
             if (!await this.checkLogin()) return null
         }
-        const response = await axios.get(urls.communities, { headers: this._headers })
-        if (await this.handleResponse(response, urls.communities) && response.data.communities) {
-            const communities = CommunityArray(response.data.communities).map(toCommunity)
-            communities.forEach((c: WeverseCommunity) => {
-                this._communityMap.set(c.id, c)
-            })
-            this.communities = communities
-            return communities
+        try {
+            const response = await axios.get(urls.communities, { headers: this._headers })
+            if (await this.handleResponse(response, urls.communities) && response.data.communities) {
+                const communities = CommunityArray(response.data.communities).map(toCommunity)
+                communities.forEach((c: WeverseCommunity) => {
+                    this._communityMap.set(c.id, c)
+                })
+                this.communities = communities
+                return communities
+            }
+            return null
+        } catch {
+            this.log('Weverse: failed to get communities')
+            return null
         }
-        return null
     }
 
     public async getCommunityArtists(c: WeverseCommunity, opts?: GetOptions): Promise<WeverseArtist[] | null> {
         if (!opts || !opts.init) {
             if (!await this.checkLogin()) return null
         }
-        const response = await axios.get(urls.community(c.id), { headers: this._headers })
-        if (await this.handleResponse(response, urls.community(c.id))) {
-            const data = response.data
-            if (data.artists) {
-                const artists = ArtistArray(data.artists).map((a: Artist) => toArtist(a, c))
-                c.addArtists(artists)
-                this.artists.push(...artists)
-                artists.forEach((a: WeverseArtist) => {
-                    this._artistMap.set(a.id, a)
-                })
+        try {
+            const response = await axios.get(urls.community(c.id), { headers: this._headers })
+            if (await this.handleResponse(response, urls.community(c.id))) {
+                const data = response.data
+                if (data.artists) {
+                    const artists = ArtistArray(data.artists).map((a: Artist) => toArtist(a, c))
+                    c.addArtists(artists)
+                    this.artists.push(...artists)
+                    artists.forEach((a: WeverseArtist) => {
+                        this._artistMap.set(a.id, a)
+                    })
+                    return artists
+                }
             }
+            this.log(`Weverse: failed to get artists for ${c.name}: bad response`)
+            return null
+        } catch {
+            this.log(`Weverse: error getting artists for ${c.name}`)
+            return null
         }
-        return null
     }
 
     public async getRecentNotifications(): Promise<WeverseNotification[] | null> {
@@ -282,40 +300,44 @@ export class WeverseClient extends WeverseEmitter {
         let from = 0
         const posts: WeversePost[] = []
         while (count <= pages) {
-            const response = await axios.get(
-                urls.communityPostsPages(wvc.id, from),
-                { headers: this._headers }
-            )
-            if (await this.handleResponse(response, urls.communityPostsPages(wvc.id, from))) {
-                const data = response.data
-                if (data.posts) {
-                    const newPosts = PostArray(data.posts).map((p: Post) => {
-                        const artist = this._artistMap.get(p.communityUser.artistId)
-                        if (!artist) {
-                            this.log('Weverse: failed to find artist for post:')
-                            this.log(p)
-                            return
-                        } else {
-                            return toPost(p, wvc, artist)
-                        }
-                    }).filter(isPost)
-                    const added = wvc.addPosts(newPosts)
-                    await Promise.all(added.map(p => p.getVideoUrls(this._headers)))
-                    this.posts.push(...added)
-                    added.forEach((p: WeversePost) => {
-                        this.newPost(p)
-                        this._postsMap.set(p.id, p)
-                    })
-                    posts.push(...added)
+            try {
+                const response = await axios.get(
+                    urls.communityPostsPages(wvc.id, from),
+                    { headers: this._headers }
+                )
+                if (await this.handleResponse(response, urls.communityPostsPages(wvc.id, from))) {
+                    const data = response.data
+                    if (data.posts) {
+                        const newPosts = PostArray(data.posts).map((p: Post) => {
+                            const artist = this._artistMap.get(p.communityUser.artistId)
+                            if (!artist) {
+                                this.log('Weverse: failed to find artist for post:')
+                                this.log(p)
+                                return
+                            } else {
+                                return toPost(p, wvc, artist)
+                            }
+                        }).filter(isPost)
+                        const added = wvc.addPosts(newPosts)
+                        await Promise.all(added.map(p => p.getVideoUrls(this._headers)))
+                        this.posts.push(...added)
+                        added.forEach((p: WeversePost) => {
+                            this.newPost(p)
+                            this._postsMap.set(p.id, p)
+                        })
+                        posts.push(...added)
+                    }
+                    if (typeof data.isEnded === 'boolean' && data.isEnded) break
+                    from = data.lastId
+                    if (from == null || (typeof from === 'number' && from <= 0)) {
+                        this.log('Weverse: malformed response from notifications endpoint')
+                        break
+                    }
+                    count++
+                } else {
+                    throw new Error()
                 }
-                if (typeof data.isEnded === 'boolean' && data.isEnded) break
-                from = data.lastId
-                if (from == null || (typeof from === 'number' && from <= 0)) {
-                    this.log('Weverse: malformed response from notifications endpoint')
-                    break
-                }
-                count++
-            } else {
+            } catch {
                 this.log('Weverse: failed to get notifications after ' + count + ' pages')
                 return posts
             }
@@ -331,36 +353,40 @@ export class WeverseClient extends WeverseEmitter {
         let from = 0
         const notifications: WeverseNotification[] = []
         while (count < pages) {
-            const response = await axios.get(urls.notifications(from), { headers: this._headers })
-            const { data } = response
-            if (await this.handleResponse(response, urls.notifications(from))) {
-                const n = NotificationArray(data.notifications).map((n: Notification) => {
-                    if (n.communityId === 0) return
-                    const artist = this._artistMap.get(n.artistId ?? -1)
-                    const community = this._communityMap.get(n.communityId)
-                    if (!community) {
-                        this.log('Weverse: failed to find community for notification:')
-                        this.log(n)
-                        return
-                    } else {
-                        try {
-                            return toNotification(n, community, artist)
-                        } catch (e) {
-                            this.log('malformed notification:')
+            try {
+                const response = await axios.get(urls.notifications(from), { headers: this._headers })
+                const { data } = response
+                if (await this.handleResponse(response, urls.notifications(from))) {
+                    const n = NotificationArray(data.notifications).map((n: Notification) => {
+                        if (n.communityId === 0) return
+                        const artist = this._artistMap.get(n.artistId ?? -1)
+                        const community = this._communityMap.get(n.communityId)
+                        if (!community) {
+                            this.log('Weverse: failed to find community for notification:')
                             this.log(n)
                             return
+                        } else {
+                            try {
+                                return toNotification(n, community, artist)
+                            } catch (e) {
+                                this.log('malformed notification:')
+                                this.log(n)
+                                return
+                            }
                         }
+                    }).filter(isNotification)
+                    notifications.push(...this.notifications.addMany(n))
+                    if (typeof data.isEnded === 'boolean' && data.isEnded) break
+                    from = data.lastId
+                    if (from == null || (typeof from === 'number' && from <= 0)) {
+                        this.log('Weverse: malformed response from notifications endpoint')
+                        break
                     }
-                }).filter(isNotification)
-                notifications.push(...this.notifications.addMany(n))
-                if (typeof data.isEnded === 'boolean' && data.isEnded) break
-                from = data.lastId
-                if (from == null || (typeof from === 'number' && from <= 0)) {
-                    this.log('Weverse: malformed response from notifications endpoint')
-                    break
+                    count++
+                } else {
+                    throw new Error()
                 }
-                count++
-            } else {
+            } catch {
                 this.log('Weverse: failed to get notifications after ' + count + ' pages')
                 break
             }
@@ -387,64 +413,85 @@ export class WeverseClient extends WeverseEmitter {
     }
 
     public async getMedia(id: number, community: WeverseCommunity): Promise<WeverseMedia[] | null> {
-        const response = await axios.get(urls.media(community.id, id), { headers: this._headers, validateStatus })
-        if (await this.handleResponse(response, urls.media(community.id, id))) {
-            const data = response.data
-            if (data.media) {
-                const media = toMedia(data.media, community)
-                const added = community.addMedia([media])
-                added.forEach(this.newMedia)
-                return added
+        try {
+            const response = await axios.get(
+                urls.media(community.id, id),
+                { headers: this._headers, validateStatus }
+            )
+            if (await this.handleResponse(response, urls.media(community.id, id))) {
+                const data = response.data
+                if (data.media) {
+                    const media = toMedia(data.media, community)
+                    const added = community.addMedia([media])
+                    added.forEach(this.newMedia)
+                    return added
+                } else {
+                    throw new Error()
+                }
+            } else {
+                throw new Error()
             }
+        } catch {
+            this.log(`Weverse: error getting media id ${id}`)
+            return null
         }
-        return null
     }
 
     public async getComments(p: WeversePost, c: WeverseCommunity, cId?: number): Promise<WeverseComment[] | null> {
-        const response = await axios.get(urls.postComments(p.id, c.id), { headers: this._headers })
-        if (await this.handleResponse(response, urls.postComments(p.id, c.id))) {
-            const data = response.data
-            if (data.artistComments) {
-                const comments = CommentArray(data.artistComments).map((c: Comment) => {
-                    const artist = this._artistMap.get(c.communityUser.artistId)
-                    if (!artist) return
-                    return toComment(c, p, artist)
-                }).filter(isComment)
-                const added = p.addComments(comments)
-                added.forEach((c: WeverseComment) => {
-                    this._commentsMap.set(c.id, c)
-                    this.newComment(c, p)
-                })
-                return added
+        try {
+            const response = await axios.get(urls.postComments(p.id, c.id), { headers: this._headers })
+            if (await this.handleResponse(response, urls.postComments(p.id, c.id))) {
+                const data = response.data
+                if (data.artistComments) {
+                    const comments = CommentArray(data.artistComments).map((c: Comment) => {
+                        const artist = this._artistMap.get(c.communityUser.artistId)
+                        if (!artist) return
+                        return toComment(c, p, artist)
+                    }).filter(isComment)
+                    const added = p.addComments(comments)
+                    added.forEach((c: WeverseComment) => {
+                        this._commentsMap.set(c.id, c)
+                        this.newComment(c, p)
+                    })
+                    return added
+                }
             }
+            throw new Error()
+        } catch {
+            this.log(`Weverse: error getting comments for post ${p.id}`)
+            return null
         }
-        return null
     }
 
     public async getPost(id: number, communityId: number): Promise<WeversePost | null> {
         const saved = this._postsMap.get(id)
         if (saved) return saved
-        const response = await axios.get(urls.postDetails(id, communityId), { headers: this._headers })
-        if (await this.handleResponse(response, urls.postDetails(id, communityId))) {
-            const data = response.data
-            if (data) {
-                const artistId = data.communityUser.artistId
-                if (!artistId || typeof artistId !== 'number') return null
-                const community = this._communityMap.get(communityId)
-                const artist = this._artistMap.get(artistId)
-                if (!community || !artist) return null
-                const post = toPost(data, community, artist)
-                await post.getVideoUrls(this._headers)
-                this.posts.push(post)
-                this._postsMap.set(post.id, post)
-                community.addPosts([post])
-                this.newPost(post)
-                return post
-            } else {
-                return null
+        try {
+            const response = await axios.get(urls.postDetails(id, communityId), { headers: this._headers })
+            if (await this.handleResponse(response, urls.postDetails(id, communityId))) {
+                const data = response.data
+                if (data) {
+                    const artistId = data.communityUser.artistId
+                    if (!artistId || typeof artistId !== 'number') return null
+                    const community = this._communityMap.get(communityId)
+                    const artist = this._artistMap.get(artistId)
+                    if (!community || !artist) return null
+                    const post = toPost(data, community, artist)
+                    await post.getVideoUrls(this._headers)
+                    this.posts.push(post)
+                    this._postsMap.set(post.id, post)
+                    community.addPosts([post])
+                    this.newPost(post)
+                    return post
+                } else {
+                    return null
+                }
             }
+            throw new Error()
+        } catch {
+            this.log(`Weverse: error getting post ${id}`)
+            return null
         }
-        return null
     }
 
     public async processNotification(n: WeverseNotification): Promise<void> {

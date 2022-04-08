@@ -1,4 +1,4 @@
-import { WeverseArtist, WeverseTab, WeversePost } from "."
+import { WeverseArtist, WeversePost } from "."
 import { Community, Photo, Video } from "../types"
 import { AssignType } from "../client"
 import { WeverseMedia } from "./media"
@@ -7,8 +7,6 @@ export class WeverseCommunity extends AssignType<Community>() {
     newPosts: WeversePost[]
     artists: WeverseArtist[]
     artistMap: Map<number, WeverseArtist>
-    tabs: WeverseTab[]
-    tabMap: Map<number, WeverseTab>
     posts: WeversePost[] = []
     postsMap: Map<number, WeversePost> = new Map<number, WeversePost>()
     photos: Photo[] = []
@@ -19,8 +17,6 @@ export class WeverseCommunity extends AssignType<Community>() {
         super(props)
         this.artists = []
         this.artistMap = new Map<number, WeverseArtist>()
-        this.tabs = []
-        this.tabMap = new Map<number, WeverseTab>()
         this.newPosts = []
         this.media = []
         this.mediaMap = new Map<number, WeverseMedia>()
@@ -82,10 +78,6 @@ export class WeverseCommunity extends AssignType<Community>() {
         return added
     }
 
-    public get mediaArray() {
-        return this.media
-    }
-
     public getArtist(id: number): WeverseArtist | undefined {
         return this.artistMap.get(id)
     }
@@ -95,7 +87,6 @@ export class WeverseCommunity extends AssignType<Community>() {
         delete partial.artistMap
         delete partial.mediaMap
         delete partial.postsMap
-        delete partial.tabMap
         return partial
     }
 }
