@@ -33,4 +33,12 @@ export class WeversePost extends AssignType<Post>() {
         this.comments = added.concat(this.comments)
         return added
     }
+
+    toJSON(): Partial<WeversePost> {
+        const partial: Partial<WeversePost> = {...this}
+        delete partial.artist
+        delete partial.community
+        delete partial.comments
+        return partial
+    }
 }

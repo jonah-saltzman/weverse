@@ -10,4 +10,10 @@ export class WeverseComment extends AssignType<Comment>() {
         this.artist = artist
         this.post = post
     }
+    toJSON(): Partial<WeverseComment> {
+        const partial: Partial<WeverseComment> = {...this}
+        delete partial.artist
+        delete partial.post
+        return partial
+    }
 }

@@ -2,7 +2,6 @@ import { WeverseOauthCredentials } from "."
 import { WeverseComment, WeverseNotification, WeversePost } from "../models"
 
 export const isWeverseLogin = (res: any): res is WeverseOauthCredentials => {
-    //console.log(res)
     return res.access_token && typeof res.access_token === 'string' &&
     res.token_type && res.token_type === 'bearer' &&
     typeof res.expires_in === 'number' &&

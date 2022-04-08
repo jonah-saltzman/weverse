@@ -8,4 +8,9 @@ export class WeverseMedia extends AssignType<Media>() {
         super(props)
         this.community = community
     }
+    toJSON(): Partial<WeverseMedia> {
+        const partial: Partial<WeverseMedia> = {...this}
+        delete partial.community
+        return partial
+    }
 }

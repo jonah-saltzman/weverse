@@ -11,6 +11,12 @@ export class WeverseNotification extends AssignType<Notification>() {
         this.artist = artist ?? undefined
         this.community = community
     }
+    toJSON(): Partial<WeverseNotification> {
+        const partial: Partial<WeverseNotification> = {...this}
+        delete partial.community
+        delete partial.artist
+        return partial
+    }
 }
 
 export class ClientNotifications {

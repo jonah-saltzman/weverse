@@ -8,7 +8,7 @@ export function readKey(): string | null {
     try {
         return fs.readFileSync(path.join(__dirname, './publicCert.txt'), 'utf-8')
     } catch(e) {
-        console.log('Weverse: ', e)
+        console.log('Weverse: error reading public key from disk', e)
         return null
     }
 }

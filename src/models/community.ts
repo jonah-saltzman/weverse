@@ -89,8 +89,13 @@ export class WeverseCommunity extends AssignType<Community>() {
     public getArtist(id: number): WeverseArtist | undefined {
         return this.artistMap.get(id)
     }
-    // public addArtistsTabs(artists?: WeverseArtist[], tabs?: WeverseTab[]): void {
-    //     if (artists) this.artists = artists
-    //     if (tabs) this.tabs = tabs
-    // }
+    
+    toJSON(): Partial<WeverseCommunity> {
+        const partial: Partial<WeverseCommunity> = {...this}
+        delete partial.artistMap
+        delete partial.mediaMap
+        delete partial.postsMap
+        delete partial.tabMap
+        return partial
+    }
 }

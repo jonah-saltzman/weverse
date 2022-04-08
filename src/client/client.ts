@@ -405,14 +405,11 @@ export class WeverseClient extends WeverseEmitter {
         if (await this.handleResponse(response, urls.postComments(p.id, c.id))) {
             const data = response.data
             if (data.artistComments) {
-                this.log('got comments!')
                 const comments = CommentArray(data.artistComments).map((c: Comment) => {
                     const artist = this._artistMap.get(c.communityUser.artistId)
                     if (!artist) return
                     return toComment(c, p, artist)
                 }).filter(isComment)
-                console.log(`getting comments for post ${p.id}`)
-                comments.forEach((c) => console.log(c.id))
                 const added = p.addComments(comments)
                 added.forEach((c: WeverseComment) => {
                     this._commentsMap.set(c.id, c)
@@ -427,10 +424,7 @@ export class WeverseClient extends WeverseEmitter {
     public async getPost(id: number, communityId: number): Promise<WeversePost | null> {
         const saved = this._postsMap.get(id)
         if (saved) return saved
-        // console.log('post not saved')
-        // console.log(urls.postDetails(id, communityId))
         const response = await axios.get(urls.postDetails(id, communityId), { headers: this._headers })
-        //console.log(response.status)
         if (await this.handleResponse(response, urls.postDetails(id, communityId))) {
             const data = response.data
             if (data) {
