@@ -28,7 +28,9 @@ export class WeversePost extends AssignType<Post>() {
         }
     }
 
-    public addComments(comments: WeverseComment[]) {
-        this.comments = comments.filter(c => !this.comments.some(c2 => c2.id === c.id)).concat(this.comments)
+    public addComments(comments: WeverseComment[]): WeverseComment[] {
+        const added = comments.filter(c => !this.comments.some(c2 => c2.id === c.id))
+        this.comments = added.concat(this.comments)
+        return added
     }
 }

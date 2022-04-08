@@ -31,11 +31,25 @@ import {
 
 import { WeverseArtist, WeverseCommunity, 
     WeverseNotification, ClientNotifications, 
-    WeversePost, WeverseComment, WeverseMedia } from "../models"
+    WeversePost, WeverseComment, WeverseMedia, WeverseEvents } from "../models"
 
-import { EventEmitter } from "events"
+import EventEmitter from 'events'
+import TypedEmitter from "typed-emitter"
 
-export class WeverseClient extends EventEmitter {
+class WeverseEmitter extends (EventEmitter as new () => TypedEmitter<WeverseEvents>) {
+    constructor() {
+        super()
+    }
+    newError = (err: Error) => this.emit('error', err)
+    ready = (initialized: boolean) => this.emit('init', initialized)
+    newNotif = (notification: WeverseNotification) => this.emit('notification', notification)
+    newPost = (post: WeversePost) => this.emit('post', post)
+    newMedia = (media: WeverseMedia) => this.emit('media', media)
+    newComment = (comment: WeverseComment, post: WeversePost) => this.emit('comment', comment, post)
+    loginResult = (result: boolean) => this.emit('login', result)
+}
+
+export class WeverseClient extends WeverseEmitter {
 
     protected _verbose: boolean
     protected _authorization: WeversePasswordAuthorization | WeverseTokenAuthorization
@@ -89,11 +103,11 @@ export class WeverseClient extends EventEmitter {
                 )
             )
             this.log('Weverse: posts retreived')
-            this.emit('ready', true)
+            this.ready(true)
         } catch(e) {
             console.log('Weverse: initialization failed')
             console.log(e)
-            this.emit('ready', false)
+            this.ready(false)
         }
     }
 
@@ -251,6 +265,7 @@ export class WeverseClient extends EventEmitter {
                     const added = wvc.addPosts(newPosts)
                     this.posts.push(...added)
                     added.forEach((p: WeversePost) => {
+                        this.newPost(p)
                         this._postsMap.set(p.id, p)
                     })
                     posts.push(...added)
@@ -314,6 +329,7 @@ export class WeverseClient extends EventEmitter {
         }
         if (process) {
             await Promise.all(notifications.map(async n => {
+                this.newNotif(n)
                 await this.processNotification(n)
             }))
             return notifications
@@ -338,7 +354,9 @@ export class WeverseClient extends EventEmitter {
             const data = response.data
             if (data.media) {
                 const media = toMedia(data.media, community)
-                return community.addMedia([media])
+                const added = community.addMedia([media])
+                added.forEach(this.newMedia)
+                return added
             }
         }
         return null
@@ -354,11 +372,12 @@ export class WeverseClient extends EventEmitter {
                     if (!artist) return
                     return toComment(c, p, artist)
                 }).filter(isComment)
-                p.addComments(comments)
-                comments.forEach((c: WeverseComment) => {
+                const added = p.addComments(comments)
+                added.forEach((c: WeverseComment) => {
                     this._commentsMap.set(c.id, c)
+                    this.newComment(c, p)
                 })
-                return comments
+                return added
             }
         }
         return null
@@ -378,6 +397,7 @@ export class WeverseClient extends EventEmitter {
                 this.posts.push(post)
                 this._postsMap.set(post.id, post)
                 community.addPosts([post])
+                this.newPost(post)
                 return post
             } else {
                 return null
