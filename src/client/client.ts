@@ -124,7 +124,7 @@ export class WeverseClient extends WeverseEmitter {
         } else {
             if (!opts.interval || opts.interval <= 0) this.log('Weverse: set a positive interval')
             else {
-                this.listener = setInterval(this.checker, opts.interval)
+                this.listener = setInterval(this.checker.bind(this), opts.interval)
                 this.log('Weverse: listening for new notifications')
             }
         }
@@ -300,6 +300,7 @@ export class WeverseClient extends WeverseEmitter {
                         }
                     }).filter(isPost)
                     const added = wvc.addPosts(newPosts)
+                    await Promise.all(added.map(p => p.getVideoUrls(this._headers)))
                     this.posts.push(...added)
                     added.forEach((p: WeversePost) => {
                         this.newPost(p)
@@ -399,18 +400,19 @@ export class WeverseClient extends WeverseEmitter {
         return null
     }
 
-    public async getComments(p: WeversePost, c: WeverseCommunity): Promise<WeverseComment[] | null> {
+    public async getComments(p: WeversePost, c: WeverseCommunity, cId?: number): Promise<WeverseComment[] | null> {
         const response = await axios.get(urls.postComments(p.id, c.id), { headers: this._headers })
         if (await this.handleResponse(response, urls.postComments(p.id, c.id))) {
             const data = response.data
             if (data.artistComments) {
                 this.log('got comments!')
-                this.log(data.artistComments[0])
                 const comments = CommentArray(data.artistComments).map((c: Comment) => {
                     const artist = this._artistMap.get(c.communityUser.artistId)
                     if (!artist) return
                     return toComment(c, p, artist)
                 }).filter(isComment)
+                console.log(`getting comments for post ${p.id}`)
+                comments.forEach((c) => console.log(c.id))
                 const added = p.addComments(comments)
                 added.forEach((c: WeverseComment) => {
                     this._commentsMap.set(c.id, c)
@@ -434,7 +436,6 @@ export class WeverseClient extends WeverseEmitter {
             if (data) {
                 const artistId = data.communityUser.artistId
                 if (!artistId || typeof artistId !== 'number') return null
-                console.log(`artistId: `, artistId)
                 const community = this._communityMap.get(communityId)
                 const artist = this._artistMap.get(artistId)
                 if (!community || !artist) return null
@@ -462,25 +463,19 @@ export class WeverseClient extends WeverseEmitter {
         try {
             switch (n.type) {
                 case NotifKeys.COMMENT:
-                    //console.log(n.contentsExtraInfo)
                     const artist = this._artistMap.get(n.artistId ?? -1)
-                    // console.log(`found artist: ${artist?.name}`)
-                    let id: number
                     const replyTo = n.contentsExtraInfo?.originContentId
+                    let postId: number
+                    let commentId: number | undefined = undefined
                     if (typeof replyTo === 'number') {
-                        //console.log('using post id: ', replyTo)
-                        id = replyTo
+                        postId = replyTo
+                        commentId = n.contentsExtraInfo.replyCommentId
+                    } else {
+                        postId = n.contentsId
                     }
-                    else {
-                        //console.log('using contentsId: ', n.contentsId)
-                        id = n.contentsId
-                    }
-                    const post = await this.getPost(id, n.community.id)
-                    console.log(post)
+                    const post = await this.getPost(postId, n.community.id)
                     if (!post || !artist) throw new Error()
-                    this.log('found post:')
-                    this.log(post)
-                    await this.getComments(post, post.community)
+                    await this.getComments(post, post.community, commentId)
                     break
                 case NotifKeys.POST:
                     await this.getPost(n.contentsId, n.community.id)
