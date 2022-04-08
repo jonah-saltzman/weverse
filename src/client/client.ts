@@ -12,7 +12,8 @@ import {
     isNotification, PostArray, 
     Post, WvHeaders, isPost, 
     NotifContent, NotifKeys, 
-    CommentArray, Comment, isComment, ListenOptions } from "../types"
+    CommentArray, Comment, isComment, 
+    ListenOptions, NewNotifications } from "../types"
 
 import { 
     WeverseUrl as urls,
@@ -124,15 +125,15 @@ export class WeverseClient extends WeverseEmitter {
         } else {
             if (!opts.interval || opts.interval <= 0) this.log('Weverse: set a positive interval')
             else {
-                this.listener = setInterval(this.checker.bind(this), opts.interval)
+                this.listener = setInterval(this.checker.bind(this, opts.process ?? true), opts.interval)
                 this.log('Weverse: listening for new notifications')
             }
         }
     }
 
-    protected async checker(): Promise<void> {
+    protected async checker(process: boolean): Promise<void> {
         try {
-            await this.getNewNotifications()
+            await this.getNewNotifications({process})
             this.polled(true)
         } catch(e) {
             if (await this.checkLogin()) {
@@ -273,10 +274,10 @@ export class WeverseClient extends WeverseEmitter {
         }
     }
 
-    public async getRecentNotifications(): Promise<WeverseNotification[] | null> {
-        if (!await this.checkLogin()) return null
-        return await this.getNotifications(1)
-    }
+    // public async getRecentNotifications(): Promise<WeverseNotification[] | null> {
+    //     if (!await this.checkLogin()) return null
+    //     return await this.getNotifications(1)
+    // }
 
     public async getCommunityPosts(c: WeverseCommunity, pages: number): Promise<WeversePost[] | null>
     public async getCommunityPosts(c: number, pages: number): Promise<WeversePost[] | null>
@@ -402,14 +403,9 @@ export class WeverseClient extends WeverseEmitter {
         }
     }
 
-    public async getNewNotifications(): Promise<WeverseNotification[] | null> {
+    public async getNewNotifications(opts?: NewNotifications): Promise<WeverseNotification[] | null> {
         if (!await this.checkLogin()) return null
-        const newNotifications = await this.getNotifications(1, false)
-        if (newNotifications) {
-            await Promise.all(newNotifications.map(this.processNotification))
-            return newNotifications
-        }
-        return null
+        return await this.getNotifications(1, opts?.process ?? true)
     }
 
     public async getMedia(id: number, community: WeverseCommunity): Promise<WeverseMedia[] | null> {

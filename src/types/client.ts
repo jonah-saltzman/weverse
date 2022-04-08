@@ -50,5 +50,10 @@ export type WvHeaders = {[key: string]: string} | undefined
 
 export interface ListenOptions {
     listen: boolean,
-    interval?: number
+    interval?: number,
+    process?: boolean
+}
+
+export interface NewNotifications {
+    process: boolean
 }
