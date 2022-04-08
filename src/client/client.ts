@@ -440,6 +440,7 @@ export class WeverseClient extends WeverseEmitter {
                 const artist = this._artistMap.get(artistId)
                 if (!community || !artist) return null
                 const post = toPost(data, community, artist)
+                await post.getVideoUrls(this._headers)
                 this.posts.push(post)
                 this._postsMap.set(post.id, post)
                 community.addPosts([post])
