@@ -28,7 +28,6 @@
   "homepage": "https://github.com/jonah-saltzman/weverse#readme",
   "dependencies": {
     "axios": "^0.26.1",
-    "node-fetch": "^3.2.3",
     "node-rsa": "^1.1.1",
     "typed-emitter": "^2.1.0"
   },
