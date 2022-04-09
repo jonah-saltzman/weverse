@@ -66,16 +66,11 @@ export class WeverseCommunity extends AssignType<Community>() {
         return newVideos
     }
 
-    public addMedia(media: WeverseMedia[]) {
-        const added: WeverseMedia[] = []
-        media.forEach(m => {
-            if (!this.mediaMap.has(m.id)) {
-                this.media.unshift(m)
-                this.mediaMap.set(m.id, m)
-                added.push(m)
-            }
-        })
-        return added
+    public addMedia(media: WeverseMedia) {
+        if (this.mediaMap.has(media.id)) return null
+        this.mediaMap.set(media.id, media)
+        this.media.push(media)
+        return media
     }
 
     public getArtist(id: number): WeverseArtist | undefined {

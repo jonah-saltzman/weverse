@@ -39,7 +39,7 @@ export type WeverseOauthCredentials = {
 export interface WeverseInitOptions {
     allPosts?: boolean
     allNotifications?: boolean
-    media?: boolean
+    allMedia?: boolean
 }
 
 export interface GetOptions {

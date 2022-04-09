@@ -7,7 +7,8 @@
     "tsc": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json",
     "copy": "copyfiles -f src/client/publicCert.txt lib/cjs/client && copyfiles -f src/client/publicCert.txt lib/esm/client",
     "prepublish": "npm run tsc && npm run copy",
-    "buildtest": "npm run tsc && npm run test"
+    "buildtest": "npm run tsc && npm run test",
+    "docs": "jsdoc -c jsdoc.json"
   },
   "repository": {
     "type": "git",
@@ -35,8 +36,10 @@
     "@types/jest": "^27.4.1",
     "@types/node": "^17.0.23",
     "@types/node-rsa": "^1.1.1",
+    "better-docs": "^2.7.2",
     "copyfiles": "^2.4.1",
     "jest": "^27.5.1",
+    "jsdoc-to-markdown": "^7.1.1",
     "ts-jest": "^27.1.4",
     "ts-node": "^10.7.0",
     "typescript": "^4.6.3"

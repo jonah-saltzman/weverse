@@ -36,20 +36,65 @@ import { WeverseArtist, WeverseCommunity,
 import EventEmitter from 'events'
 import TypedEmitter from 'typed-emitter'
 
+
+/**
+ * WeverseEmitter allows the WeverseClient to emit events and provides methods for doing so
+ * @class
+ */
 class WeverseEmitter extends (EventEmitter as new () => TypedEmitter<WeverseEvents>) {
     constructor() {
         super()
     }
+    /**
+     * @param  {Error} err - The error to be emitted
+     */
     newError = (err: Error) => this.emit('error', err)
+    /**
+     * @param  {boolean} initialized - whether initialization succeeded
+     */
     ready = (initialized: boolean) => this.emit('init', initialized)
+    /**
+     * @param  {WeverseNotification} notification - new Notification to be emitted
+     */
     newNotif = (notification: WeverseNotification) => this.emit('notification', notification)
+    /**
+     * @param  {WeversePost} post - new Post to be emitted
+     */
     newPost = (post: WeversePost) => this.emit('post', post)
+    /**
+     * @param  {WeverseMedia} media - new Media to be emitted
+     */
     newMedia = (media: WeverseMedia) => this.emit('media', media)
+    /**
+     * @param  {WeverseComment} comment - the Comment that was retrieved
+     * @param  {WeversePost} post - the Post associated with the Comment
+     */
     newComment = (comment: WeverseComment, post: WeversePost) => this.emit('comment', comment, post)
+    /**
+     * @param  {boolean} result - boolean result of the login attempt
+     */
     loginResult = (result: boolean) => this.emit('login', result)
+    /**
+     * @param  {boolean} status - result of the poll attempt. If true, Weverse was successfully polled
+     */
     polled = (status: boolean) => this.emit('poll', status)
 }
-
+/**
+ * Client for the private Weverse api
+ * @prop {WeverseCommunity[]} communities - The communities associated with the Weverse account
+ * @prop {WeverseArtist[]} artists - All artists in all communities associated with the account
+ * @prop {ClientNotifications} notifications - Subclass handling all notifications for the account
+ * @prop {WeversePost[]} posts - All posts that have been retrieved by this client
+ * @fires WeverseClient#error
+ * @fires WeverseClient#init
+ * @fires WeverseClient#notification
+ * @fires WeverseClient#post
+ * @fires WeverseClient#media
+ * @fires WeverseClient#comment
+ * @fires WeverseClient#login
+ * @fires WeverseClient#poll
+ * @class
+ */
 export class WeverseClient extends WeverseEmitter {
 
     protected _verbose: boolean
@@ -70,7 +115,10 @@ export class WeverseClient extends WeverseEmitter {
     protected _postsMap: Map<number, WeversePost> = new Map<number, WeversePost>()
     protected _commentsMap: Map<number, WeverseComment> = new Map<number, WeverseComment>()
     protected listener: ReturnType<typeof setInterval> | undefined
-
+    /**
+     * @param  {WeverseAuthorization} authorization - either {token: string} or {username: string, password: string}
+     * @param  {boolean} verbose - optional; defaults to false
+     */
     constructor(authorization: WeverseAuthorization, verbose?: boolean) {
         super()
         if (authorization === undefined) throw 'Must instantiate with Weverse token or login'
@@ -87,7 +135,15 @@ export class WeverseClient extends WeverseEmitter {
             this._authType = 'password'
         }
     }
-
+    /**
+     * init options:
+     *   allPosts: boolean - Whether to load all posts from each community into memory. This will be slow
+     *   allNotifications: boolean - Whether to load all notifications for the Weverse account. Will be slow.
+     *   allMedia: boolean - not currently implemented
+     * @param  {WeverseInitOptions} options - optional
+     * @returns {Promise<void>}
+     * @public
+     */
     public async init(options?: WeverseInitOptions): Promise<void> {
         try {
             if (!await this.checkLogin()) return
@@ -115,7 +171,15 @@ export class WeverseClient extends WeverseEmitter {
             this.ready(false)
         }
     }
-
+    /**
+     * Tells the client to start or stop listening for new notifications.
+     * Options:
+     *   listen: boolean - Whether the client should be listening
+     *   interval: boolean - Interval in MS to listen on
+     *   process: boolean (optional) - Whether new notifications should be processed into Posts/Comments/Media
+     * @param  {ListenOptions} opts
+     * @public
+     */
     public listen(opts: ListenOptions): void {
         if (opts.listen === false) {
             if (this.listener) {
@@ -130,7 +194,12 @@ export class WeverseClient extends WeverseEmitter {
             }
         }
     }
-
+    /**
+     * Method passed to setInterval if client is listening for new notifications
+     * @param  {boolean} process - Whether to process new notifications into Posts/Comments/Media
+     * @returns {Promise<void>}
+     * @protected
+     */
     protected async checker(process: boolean): Promise<void> {
         try {
             await this.getNewNotifications({process})
@@ -148,7 +217,11 @@ export class WeverseClient extends WeverseEmitter {
             }
         }
     }
-
+    /**
+     * Attempts to use a refresh token to get a new Weverse access token
+     * @returns {Promise<boolean>} Whether a new access token was granted
+     * @public
+     */
     public async tryRefreshToken(): Promise<boolean> {
         if (!this._credentials) return false
         try {
@@ -170,6 +243,13 @@ export class WeverseClient extends WeverseEmitter {
         }
     }
     
+    /**
+     * Only used for password authentication. Attempts to login either with login given when
+     * the client was created, or with optional credentials parameter
+     * @param  {WeversePasswordAuthorization} credentials - optional, will override initial credentials
+     * @returns {Promise<void>}
+     * @public
+     */
     public async login(credentials?: WeversePasswordAuthorization): Promise<void> {
         this._authorized = false
         if (credentials) {
@@ -211,7 +291,11 @@ export class WeverseClient extends WeverseEmitter {
             this.log(e)
         }
     }
-
+    /**
+     * Force a credentials check. If login has already been converted to a token, token will be checked.
+     * @returns {Promise<boolean>} - whether the check was successful
+     * @public
+     */
     public async checkLogin(): Promise<boolean> {
         if (this._authType === 'password') {
             await this.login()
@@ -226,7 +310,15 @@ export class WeverseClient extends WeverseEmitter {
         }
         return true
     }
-
+    /**
+     * Load all communities associated with this Weverse account. Returns the communities
+     * but also adds them to the cache.
+     * Options:
+     *   init: boolean - Whether this method was called by the init method and should skip the login check
+     * @param  {GetOptions} opts - optional
+     * @returns {Promise<WeverseCommunity[]>}
+     * @public
+     */
     public async getCommunities(opts?: GetOptions): Promise<WeverseCommunity[] | null> {
         if (!opts || !opts.init) {
             if (!await this.checkLogin()) return null
@@ -247,7 +339,14 @@ export class WeverseClient extends WeverseEmitter {
             return null
         }
     }
-
+    /**
+     * Get the artists in a community. Adds them to the cache and returns.
+     * Options: 
+     *   init - whether this method was called by init method and the login check should be skipped
+     * @param  {WeverseCommunity} c
+     * @param  {GetOptions} opts - optional
+     * @returns {Promise<WeverseArtist[] | null>} returns null if failed to fetch artists
+     */
     public async getCommunityArtists(c: WeverseCommunity, opts?: GetOptions): Promise<WeverseArtist[] | null> {
         if (!opts || !opts.init) {
             if (!await this.checkLogin()) return null
@@ -274,11 +373,13 @@ export class WeverseClient extends WeverseEmitter {
         }
     }
 
-    // public async getRecentNotifications(): Promise<WeverseNotification[] | null> {
-    //     if (!await this.checkLogin()) return null
-    //     return await this.getNotifications(1)
-    // }
-
+    /**
+     * @template getCommunityPosts
+     * @param  {WeverseCommunity|number} c - The community for which posts should be retrieved (object or number)
+     * @param  {number} pages - The number of pages of results to be retrieved
+     * @returns {Promise<WeversePost[] | null>} - Returns null if failed to get posts; returns only new posts not in cache
+     * @emits WeverseClient#post
+     */
     public async getCommunityPosts(c: WeverseCommunity, pages: number): Promise<WeversePost[] | null>
     public async getCommunityPosts(c: number, pages: number): Promise<WeversePost[] | null>
     public async getCommunityPosts(c: WeverseCommunity | number, pages: number): Promise<WeversePost[] | null> {
@@ -345,7 +446,12 @@ export class WeverseClient extends WeverseEmitter {
         }
         return posts
     }
-
+    /**
+     * Note: If process = true, events will be emitted for new notifications AND new Posts/Comments/Media
+     * @param  {number} pages - Optional number of pages to get; defaults to 1
+     * @param  {boolean} process - Whether notifications should be processed into Posts/Comments/Media
+     * @returns {Promise<WeverseNotification[] | null>} - Returns only new notifications not already in cache, or null on failure
+     */
     public async getNotifications(pages?: number, process?: boolean): Promise<WeverseNotification[] | null> {
         if (pages === undefined) pages = 1
         if (pages <= -1) return null
@@ -402,13 +508,25 @@ export class WeverseClient extends WeverseEmitter {
             return notifications
         }
     }
-
+    /**
+     * Get one page of the most recent notifications
+     * @param  {NewNotifications} opts - {process: boolean} - whether to process notifications into content
+     * @returns {Promise<WeverseNotification[] | null>}
+     */
     public async getNewNotifications(opts?: NewNotifications): Promise<WeverseNotification[] | null> {
         if (!await this.checkLogin()) return null
         return await this.getNotifications(1, opts?.process ?? true)
     }
-
-    public async getMedia(id: number, community: WeverseCommunity): Promise<WeverseMedia[] | null> {
+    /**
+     * Get a specific media object by id
+     * Will first check local cache, then request from Weverse
+     * @param  {number} id
+     * @param  {WeverseCommunity} community
+     * @returns {Promise<WeverseMedia | null>} - Returns only if media did not exist in cache
+     */
+    public async getMedia(id: number, community: WeverseCommunity): Promise<WeverseMedia | null> {
+        const saved = community.mediaMap.get(id)
+        if (saved) return saved
         try {
             const response = await axios.get(
                 urls.media(community.id, id),
@@ -418,9 +536,13 @@ export class WeverseClient extends WeverseEmitter {
                 const data = response.data
                 if (data.media) {
                     const media = toMedia(data.media, community)
-                    const added = community.addMedia([media])
-                    added.forEach(this.newMedia)
-                    return added
+                    const added = community.addMedia(media)
+                    if (added) {
+                        this.newMedia(added)
+                        return added
+                    } else {
+                        return null
+                    }
                 } else {
                     throw new Error()
                 }
@@ -432,7 +554,13 @@ export class WeverseClient extends WeverseEmitter {
             return null
         }
     }
-
+    /**
+     * Gets all artist comments on a given post. Returns only new comments.
+     * @param  {WeversePost} p
+     * @param  {WeverseCommunity} c
+     * @param  {number} cId?
+     * @returns {Promise<WeverseComment[] | null>}
+     */
     public async getComments(p: WeversePost, c: WeverseCommunity, cId?: number): Promise<WeverseComment[] | null> {
         try {
             const response = await axios.get(urls.postComments(p.id, c.id), { headers: this._headers })
@@ -458,7 +586,13 @@ export class WeverseClient extends WeverseEmitter {
             return null
         }
     }
-
+    /**
+     * Get one post by id. First checks the cache, then requests from Weverse.
+     * @param  {number} id
+     * @param  {number} communityId
+     * @returns {Promise<WeversePost | null>}
+     * @public
+     */
     public async getPost(id: number, communityId: number): Promise<WeversePost | null> {
         const saved = this._postsMap.get(id)
         if (saved) return saved
@@ -489,8 +623,12 @@ export class WeverseClient extends WeverseEmitter {
             return null
         }
     }
-
-    public async processNotification(n: WeverseNotification): Promise<void> {
+    /**
+     * Process one notification. If it refers to a post, comment, or media, attempt to add to cache
+     * @param  {WeverseNotification} n
+     * @returns {Promise<void>}
+     */
+    protected async processNotification(n: WeverseNotification): Promise<void> {
         let k: keyof typeof NotifContent
         for (k in NotifContent) {
             if (NotifContent[k].some(str => n.message.includes(str))) {
@@ -531,7 +669,11 @@ export class WeverseClient extends WeverseEmitter {
             this.log(`failed to process notification ${n.id}: ${n.type}`)
         }
     }
-
+    /**
+     * Encrypt provided password with Weverse public RSA key and create payload to send to login endpoint
+     * Adds the payload as a property of the client, returns void
+     * @returns {void}
+     */
     protected createLoginPayload(): void {
         try {
             let payload: WeverseLoginPayloadInterface | null = null
@@ -546,7 +688,10 @@ export class WeverseClient extends WeverseEmitter {
             return
         }
     }
-
+    /**
+     * Check if the current token (provided or recieved from Weverse) is valid
+     * @returns {Promise<boolean>}
+     */
     public async checkToken(): Promise<boolean> {
         if (this._authType !== 'token') {
             this.log('Weverse: provide a token or call .login() with valid username + password')
@@ -570,7 +715,12 @@ export class WeverseClient extends WeverseEmitter {
             return false
         }
     }
-
+    /**
+     * If the client receives a 401 unauthorized from Weverse, will attempt to refresh credentials
+     * @param  {AxiosResponse} response
+     * @param  {string} url
+     * @returns {Promise<boolean>}
+     */
     protected async handleResponse(response: AxiosResponse, url: string): Promise<boolean> {
         if (response.status === 200) return true
         if (response.status === 401) {
@@ -584,15 +734,24 @@ export class WeverseClient extends WeverseEmitter {
         this.log(`Weverse: API error @ ${url}. Status code ${response.status}`)
         return false
     }
-
+    /**
+     * Log something if verbose = true
+     * @param  {any} ...vals
+     */
     protected log(...vals: any): void {
         if (this.verbose) console.log(...vals)
     }
-
+    /**
+     * Check the community hashmap for a given id
+     * @param  {number} id
+     */
     public communityById(id: number): WeverseCommunity | null {
         return this._communityMap.get(id) ?? null
     }
-
+    /**
+     * Check the post hashmap for a given id
+     * @param  {number} id
+     */
     public post(id: number): WeversePost | null {
         return this._postsMap.get(id) ?? null
     }
@@ -634,12 +793,59 @@ export class WeverseClient extends WeverseEmitter {
     }
 }
 
-// protected _verbose: boolean
-// protected _authorization: WeversePasswordAuthorization | WeverseTokenAuthorization
-// protected _authType: 'token' | 'password'
-// protected _loginPayload: WeverseLoginPayloadInterface | null
-// protected _authorized: boolean
-// protected _credentials: WeverseOauthCredentials | null
-// protected _refreshToken?: string
-// protected _weverseId?: number
-// protected _headers: {[key: string]: string} | undefined
+/**
+ * Error event
+ *
+ * @event WeverseClient#error
+ * @type {Error}
+ */
+
+/**
+ * Init event
+ * Whether initialization was successful
+ * @event WeverseClient#init
+ * @type {boolean}
+ */
+
+/**
+ * Notification event
+ * New notification
+ * @event WeverseClient#notification
+ * @type {WeverseNotification}
+ */
+
+/**
+ * Post event
+ * New post
+ * @event WeverseClient#post
+ * @type {WeversePost}
+ */
+
+/**
+ * Media event
+ * New media
+ * @event WeverseClient#media
+ * @type {WeverseMedia}
+ */
+
+/**
+ * Comment event
+ * New comment. Provides comment and post.
+ * @event WeverseClient#comment
+ * @type {WeverseComment}
+ * @type {WeversePost}
+ */
+
+/**
+ * Login event
+ * Result of login attempt.
+ * @event WeverseClient#login
+ * @type {boolean}
+ */
+
+/**
+ * Poll event
+ * Result of poll attempt.
+ * @event WeverseClient#poll
+ * @type {boolean}
+ */

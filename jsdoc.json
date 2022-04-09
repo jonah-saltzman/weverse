@@ -1,0 +1,21 @@
+{
+    "recurseDepth": 10,
+    "tags": {
+        "allowUnknownTags": true,
+        "dictionaries": ["jsdoc","closure"]
+    },
+    "plugins": [
+        "node_modules/better-docs/typescript"
+    ],
+    "source": {
+        "includePattern": "\\.(jsx|js|ts|tsx)$"
+    },
+    "sourceType": "module",
+    "templates": {
+        "cleverLinks": false,
+        "monospaceLinks": false
+    },
+    "opts": {
+        "template": "node_modules/better-docs"
+    }
+}
