@@ -208,11 +208,9 @@ export class WeverseClient extends WeverseEmitter {
             if (await this.checkLogin()) {
                 this.log('Weverse: successfully reconnected')
                 this.polled(true)
-            }
-            else {
-                this.log('Weverse: failed to reconnect. Stopping listener')
-                this.listen({listen: false})
-                this.newError(new Error('Weverse: failed to reconnect. Stopping listener.'))
+            } else {
+                this.log('Weverse: polling failed')
+                //this.newError(new Error('Weverse: failed to reconnect. Stopping listener.'))
                 this.polled(false)
             }
         }
@@ -517,7 +515,7 @@ export class WeverseClient extends WeverseEmitter {
      * @returns {Promise<WeverseNotification[] | null>}
      */
     public async getNewNotifications(opts?: NewNotifications): Promise<WeverseNotification[] | null> {
-        if (!await this.checkLogin()) return null
+        if (!await this.checkLogin()) throw new Error()
         return await this.getNotifications(1, opts?.process ?? true)
     }
     /**
@@ -713,7 +711,7 @@ export class WeverseClient extends WeverseEmitter {
                 return this._authorized = await this.tryRefreshToken()
             }
         } catch(e) {
-            this.log(e)
+            this.log(`Weverse: failed to check token`)
             this._authorized = false
             return false
         }
