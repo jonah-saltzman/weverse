@@ -302,13 +302,16 @@ export class WeverseClient extends WeverseEmitter {
             if (!this._authorized) {
                 console.log('Weverse: login failed. Check username + password, or provide a token instead')
                 return false
+            } else {
+                return true
             }
         }
         if (!await this.checkToken()) {
             console.log('Weverse: invalid token / unable to refresh')
             return false
+        } else {
+            return true
         }
-        return true
     }
     /**
      * Load all communities associated with this Weverse account. Returns the communities
