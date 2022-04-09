@@ -199,7 +199,8 @@ Client for the private Weverse api
     * [.checkToken()](#WeverseClient+checkToken) ⇒ <code>Promise.&lt;boolean&gt;</code>
     * [.handleResponse(response, url)](#WeverseClient+handleResponse) ⇒ <code>Promise.&lt;boolean&gt;</code>
     * [.log()](#WeverseClient+log)
-    * [.communityById(id)](#WeverseClient+communityById)
+    * [.communityById(id)](#WeverseClient+communityById) ⇒ <code>WeverseCommunity</code> \| <code>null</code>
+    * [.artistById(id)](#WeverseClient+artistById) ⇒ <code>WeverseArtist</code> \| <code>null</code>
     * [.post(id)](#WeverseClient+post)
     * ["error"](#WeverseClient+event_error)
     * ["init"](#WeverseClient+event_init)
@@ -434,8 +435,19 @@ Log something if verbose = true
 
 <a name="WeverseClient+communityById"></a>
 
-### weverseClient.communityById(id)
+### weverseClient.communityById(id) ⇒ <code>WeverseCommunity</code> \| <code>null</code>
 Check the community hashmap for a given id
+
+**Kind**: instance method of [<code>WeverseClient</code>](#WeverseClient)  
+
+| Param | Type |
+| --- | --- |
+| id | <code>number</code> | 
+
+<a name="WeverseClient+artistById"></a>
+
+### weverseClient.artistById(id) ⇒ <code>WeverseArtist</code> \| <code>null</code>
+Check the artist hashmap for a given id
 
 **Kind**: instance method of [<code>WeverseClient</code>](#WeverseClient)  
 

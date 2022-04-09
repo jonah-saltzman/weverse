@@ -1,6 +1,6 @@
 {
   "name": "weverse",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Wrapper for weverse private API",
   "scripts": {
     "test": "jest",
