@@ -744,10 +744,20 @@ export class WeverseClient extends WeverseEmitter {
     /**
      * Check the community hashmap for a given id
      * @param  {number} id
+     * @returns {WeverseCommunity | null}
      */
     public communityById(id: number): WeverseCommunity | null {
         return this._communityMap.get(id) ?? null
     }
+    /**
+     * Check the artist hashmap for a given id
+     * @param  {number} id
+     * @returns {WeverseArtist | null}
+     */
+    public artistById(id: number): WeverseArtist | null {
+        return this._artistMap.get(id) ?? null
+    }
+
     /**
      * Check the post hashmap for a given id
      * @param  {number} id

@@ -1,3 +1,66 @@
+## Usage
+
+### Provide credentials
+See <a href="https://pypi.org/project/Weverse/">MujyKun's</a> guide on finding your Weverse access token.
+```js
+import { WeverseClient } from "weverse";
+
+const myClient = new WeverseClient({token: 'my-access-token'})
+// or
+const myClient = new WeverseClient({username: 'jonah', password: 'top-secret'})
+```
+
+### Initialize
+```js
+import { WeverseClient } from "weverse";
+
+const myClient = new WeverseClient({token: 'my-access-token'})
+await myClient.init({allPosts: true, allNotifications: false})
+
+myClient.communities.forEach(community => {
+    // typesafe objects with autocompletion
+    const details = {
+        name: community.name
+        posts: community.posts.length
+    }
+    // do something
+})
+```
+
+### Listen for new notifications
+```js
+import { WeverseClient } from "weverse";
+
+const myClient = new WeverseClient({token: 'my-access-token'})
+myClient.init({allPosts: true, allNotifications: false})
+
+myClient.on('init', async (ready) => {
+    if (ready) {
+        myClient.listen({listen: true, interval: 5000})
+    }
+})
+
+myClient.on('comment', (comment, post) => {
+    // all objects are typed
+    const commenter = myClient.artistById(comment.artist.id)
+    const postAuthor = myClient.artistById(post.artist.id)
+    console.log(`${commenter.name} commented on ${postAuthor.name}'s post!`)
+})
+
+myClient.on('post', (post) => {
+    if (post.photos.length) {
+        post.photos.forEach(photo => {
+            downloadImage(photo.orgImgUrl)
+        })
+    }
+})
+```
+
+## Credit
+
+All credit to <a href="https://github.com/MujyKun">MujyKun</a> for reverse-engineering most of the
+Weverse endpoints used by this module.
+
 ## Classes
 
 <dl>
