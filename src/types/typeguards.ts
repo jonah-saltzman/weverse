@@ -50,11 +50,11 @@ const number: TypeGuard<number> = (val: unknown) => {
 const url: TypeConverter<string, URL> = (val: unknown) => {
     if (val === undefined) return new URL('https://PLACEHOLDER.weverse.com')
     if (typeof val !== 'string') throw new Error()
-    return new URL(val)
+    const url = new URL(val)
+    return url
 }
 
 const toNum: TypeConverter<string, number> = (val: string) => {
-    console.log(`converting: `, val)
     if (typeof val !== 'string') throw new Error()
     return Number(val)
 }
@@ -257,7 +257,7 @@ export const Post = object({
     communityUser: artistInfo,
     communityTabId: number,
     body: optional(string),
-    artistComments: array(Comment),
+    artistComments: optional(array(Comment)),
     commentCount: number,
     likeCount: number,
     createdAt: date,

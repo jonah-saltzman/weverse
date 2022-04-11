@@ -607,7 +607,7 @@ export class WeverseClient extends WeverseEmitter {
                     const community = this._communityMap.get(communityId)
                     const artist = this._artistMap.get(artistId)
                     if (!community || !artist) return null
-                    const post = toPost(data, community, artist)
+                    const post = toPost(Post(data), community, artist)
                     await post.getVideoUrls(this._headers)
                     this.posts.push(post)
                     this._postsMap.set(post.id, post)
@@ -619,8 +619,9 @@ export class WeverseClient extends WeverseEmitter {
                 }
             }
             throw new Error()
-        } catch {
+        } catch (e){
             this.log(`Weverse: error getting post ${id}`)
+            this.log(e)
             return null
         }
     }
